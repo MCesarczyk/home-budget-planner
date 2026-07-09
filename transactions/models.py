@@ -9,6 +9,9 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     kind = models.CharField(max_length=7, choices=Kind.choices)
 
+    class Meta:
+        verbose_name_plural = "categories"
+
 
 class Subcategory(models.Model):
     category = models.ForeignKey(
@@ -17,6 +20,7 @@ class Subcategory(models.Model):
     name = models.CharField(max_length=100)
 
     class Meta:
+        verbose_name_plural = "subcategories"
         constraints = [
             models.UniqueConstraint(
                 fields=["category", "name"], name="uq_subcategory_per_category"
