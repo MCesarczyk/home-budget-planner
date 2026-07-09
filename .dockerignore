@@ -1,0 +1,22 @@
+# Never ship the local dev database — the container creates + seeds its own.
+db.sqlite3
+*.sqlite3
+
+# VCS / tooling
+.git
+.gitignore
+.ropeproject/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local data dumps (gitignored) — not needed in the image.
+dump/
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml

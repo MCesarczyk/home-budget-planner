@@ -1,0 +1,21 @@
+# Demo setup: single Django service, SQLite kept inside the container.
+# No database service yet — planned migration to an external DB comes later.
+services:
+  web:
+    build: .
+    ports:
+      - "8088:8000"
+    environment:
+      # Demo superuser auto-created on startup (see docker-entrypoint.sh).
+      # Read by `createsuperuser --noinput`. Change these for anything real.
+      DJANGO_SUPERUSER_USERNAME: admin
+      DJANGO_SUPERUSER_EMAIL: admin@example.com
+      DJANGO_SUPERUSER_PASSWORD: admin
+    # The SQLite file (config settings: BASE_DIR/db.sqlite3) lives on the
+    # container's writable layer. Recreating the container therefore starts from
+    # a fresh, freshly-seeded DB — i.e. migration + seed run on creation.
+    #
+    # Persisting it across `docker compose down` is intentionally left out for
+    # now: the DB sits inside the code dir (/app), so a naive volume would shadow
+    # the app. When you move to an external DB, wire that up here as its own
+    # service instead.
