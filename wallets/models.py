@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.db import models
+from django.db.models import Sum
 
 
 class Purpose(models.Model):
@@ -29,3 +32,11 @@ class Account(models.Model):
         blank=True,
     )
     is_active = models.BooleanField(default=True)
+
+    @property
+    def balance(self):
+        """Current balance = opening balance + money in − money out. Computed
+        from the transaction legs (reverse relations defined on Transaction)."""
+        incoming = self.incoming_transactions.aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        outgoing = self.outgoing_transactions.aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        return self.opening_balance + incoming - outgoing
