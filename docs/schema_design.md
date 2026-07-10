@@ -3,8 +3,9 @@
 Design for normalizing the flat `transactions` table (see `transactions_sample.sql`)
 into related `categories`, `subcategories`, and `transactions` tables.
 
-Status: **v1 implemented** (models + migrations for `categories`, `subcategories`,
-`transactions`). **v2 (accounts + transfers) is design-only** — see
+Status: **v1 & v2 implemented** (models + migrations). v1 covers `categories`,
+`subcategories`, `transactions`; v2 adds the `wallets` app (`accounts`,
+`purposes`), transaction account legs, and transfers — see
 ["v2 — Accounts & transfers"](#v2--accounts--transfers) below.
 
 ## Background
@@ -115,7 +116,10 @@ only if a third `kind` (e.g. "transfer") ever appears.
 
 # v2 — Accounts & transfers
 
-Status: **design only — not yet implemented.**
+Status: **implemented.** `wallets` app (`Account`, `Purpose`) with seed data;
+`Transaction` extended with `source_account` / `destination_account` legs, nullable
+`subcategory`, and the four CHECK constraints; existing rows backfilled and sample
+transfers seeded. `Account.balance` is computed from the transaction legs.
 
 v2 introduces **accounts** (bank, savings, investment) so we can track each
 account's balance and the cash flow between them, and adds a third transaction
