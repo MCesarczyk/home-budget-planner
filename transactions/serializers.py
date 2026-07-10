@@ -31,7 +31,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "subcategory",
         ]
 
-    def get_type(self, obj):
+    def get_type(self, obj) -> str:
         if obj.source_account_id and obj.destination_account_id:
             return "transfer"
         return "income" if obj.destination_account_id else "expense"

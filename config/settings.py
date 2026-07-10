@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     "wallets",
     "transactions",
 ]
@@ -48,6 +50,24 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.api.api_exception_handler",
     # No auth configured yet — the API is open in this development build.
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Home Budget Planner API",
+    "DESCRIPTION": (
+        "REST API for accounts, purposes, categories, and transactions. "
+        "A transaction's type (income / expense / transfer) is derived from which "
+        "account legs are set; see the transactions endpoint for details."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Serve Swagger UI / ReDoc assets from the bundled sidecar (django static
+    # files) instead of an external CDN, so the docs render in offline / Docker /
+    # air-gapped environments and aren't pinned to a drifting "@latest" build.
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
 }
 
 MIDDLEWARE = [

@@ -1,4 +1,6 @@
 from django.db.models import Q
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import viewsets
 
 from .models import Category, Subcategory, Transaction
@@ -21,18 +23,44 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
     serializer_class = SubcategorySerializer
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "type",
+                OpenApiTypes.STR,
+                enum=["income", "expense", "transfer"],
+                description="Filter by derived transaction type.",
+            ),
+            OpenApiParameter(
+                "account",
+                OpenApiTypes.INT,
+                description="Account id appearing on either leg.",
+            ),
+            OpenApiParameter("source_account", OpenApiTypes.INT),
+            OpenApiParameter("destination_account", OpenApiTypes.INT),
+            OpenApiParameter("subcategory", OpenApiTypes.INT),
+            OpenApiParameter(
+                "category",
+                OpenApiTypes.INT,
+                description="Category id (matched via subcategory).",
+            ),
+            OpenApiParameter(
+                "date_from",
+                OpenApiTypes.DATE,
+                description="Inclusive lower bound on tx_date (YYYY-MM-DD).",
+            ),
+            OpenApiParameter(
+                "date_to",
+                OpenApiTypes.DATE,
+                description="Inclusive upper bound on tx_date (YYYY-MM-DD).",
+            ),
+        ]
+    )
+)
 class TransactionViewSet(viewsets.ModelViewSet):
     """Single transactions endpoint. The derived ``type`` field distinguishes
-    income / expense / transfer. Supports these query filters:
-
-    - ``type``            — income | expense | transfer
-    - ``account``         — id appearing on either leg
-    - ``source_account``  — id on the source leg
-    - ``destination_account`` — id on the destination leg
-    - ``subcategory``     — subcategory id
-    - ``category``        — category id (via subcategory)
-    - ``date_from`` / ``date_to`` — inclusive tx_date bounds (YYYY-MM-DD)
-    """
+    income / expense / transfer."""
 
     serializer_class = TransactionSerializer
 
