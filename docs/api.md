@@ -111,9 +111,12 @@ List endpoints are paginated, **50 items per page**. Use `?page=N`.
 ```
 
 ### Money & dates
-- Decimal fields (`amount`, `balance`, `opening_balance`, `target_amount`) are
-  serialized as **strings** (e.g. `"294.00"`) to avoid float rounding. Send them
-  as strings or numbers; you'll always get strings back.
+- **All monetary values are serialized as strings** (e.g. `"294.00"`) to avoid
+  float rounding — this covers `amount`, `balance`, `opening_balance`,
+  `target_amount`, and every money field in the report responses (`net_worth`,
+  `total_assets`, `total_liabilities`, `current_amount`, category/subcategory
+  totals, etc.). Send them as strings or numbers; you'll always get strings back.
+  (The report `progress` field is the one exception — a JSON number, not a string.)
 - Dates are `"YYYY-MM-DD"`.
 
 ### Standard error shapes
@@ -312,14 +315,17 @@ zero); spending is expense-only.
 
 **`GET /api/reports/net-worth/`** — balances grouped into assets and liabilities,
 with subtotals. Liability balances are negative, so
-`net_worth = total_assets + total_liabilities`.
+`net_worth = total_assets + total_liabilities` (assets abbreviated to one row here):
 ```json
 {
-  "assets": [ { "id": 1, "name": "Main Checking", "type": "checking", "balance": "7780.17" } ],
-  "total_assets": "65180.17",
-  "liabilities": [ { "id": 7, "name": "Mortgage", "type": "liability", "balance": "-295000.00" } ],
-  "total_liabilities": "-295000.00",
-  "net_worth": "-229819.83"
+  "assets": [ { "id": 1, "name": "Main Checking", "type": "checking", "balance": "2003.17" } ],
+  "total_assets": "59403.17",
+  "liabilities": [
+    { "id": 7, "name": "Home Mortgage", "type": "liability", "balance": "-247600.00" },
+    { "id": 8, "name": "Credit Card", "type": "liability", "balance": "-1000.00" }
+  ],
+  "total_liabilities": "-248600.00",
+  "net_worth": "-189196.83"
 }
 ```
 
@@ -328,7 +334,7 @@ category, with a subcategory breakdown, over an optional inclusive date range.
 ```json
 {
   "date_from": null, "date_to": null,
-  "total": "13948.25",
+  "total": "16825.25",
   "categories": [
     { "id": 3, "name": "Housing", "kind": "expense", "total": "5985.13",
       "subcategories": [ { "id": 6, "name": "Rent", "total": "5400.00" } ] }
@@ -341,8 +347,8 @@ net over an optional inclusive date range, plus grand totals.
 ```json
 {
   "date_from": null, "date_to": null,
-  "months": [ { "month": "2023-12", "income": "3751.70", "expense": "2838.50", "net": "913.20" } ],
-  "totals": { "income": "20928.42", "expense": "13948.25", "net": "6980.17" }
+  "months": [ { "month": "2023-12", "income": "3751.70", "expense": "3778.50", "net": "-26.80" } ],
+  "totals": { "income": "20928.42", "expense": "16825.25", "net": "4103.17" }
 }
 ```
 
