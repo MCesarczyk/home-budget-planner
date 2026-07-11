@@ -40,6 +40,7 @@ router.register("transactions", TransactionViewSet, basename="transaction")
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('authn.urls')),
+    path('api/reports/', include('reports.urls')),
     path('api/', include(router.urls)),
     # OpenAPI schema + interactive docs.
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

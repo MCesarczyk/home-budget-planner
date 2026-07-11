@@ -294,6 +294,56 @@ shape with derived `type`:
 }
 ```
 
+### 4.6 Reports — `/api/reports/`
+Read-only aggregations for dashboards. All are `GET`, require auth, and (being
+safe methods) need no `X-CSRFToken`. Money values are decimal strings. **Transfers
+are excluded** from spending and cashflow (they're internal moves that net to
+zero); spending is expense-only.
+
+**`GET /api/reports/net-worth/`** — per-account balances + total.
+```json
+{
+  "accounts": [ { "id": 1, "name": "Main Checking", "type": "checking", "balance": "7780.17" } ],
+  "net_worth": "65180.17"
+}
+```
+
+**`GET /api/reports/spending/?date_from=&date_to=`** — expenses grouped by
+category, with a subcategory breakdown, over an optional inclusive date range.
+```json
+{
+  "date_from": null, "date_to": null,
+  "total": "13948.25",
+  "categories": [
+    { "id": 3, "name": "Housing", "kind": "expense", "total": "5985.13",
+      "subcategories": [ { "id": 6, "name": "Rent", "total": "5400.00" } ] }
+  ]
+}
+```
+
+**`GET /api/reports/cashflow/?date_from=&date_to=`** — monthly income / expense /
+net over an optional inclusive date range, plus grand totals.
+```json
+{
+  "date_from": null, "date_to": null,
+  "months": [ { "month": "2023-12", "income": "3751.70", "expense": "2838.50", "net": "913.20" } ],
+  "totals": { "income": "20928.42", "expense": "13948.25", "net": "6980.17" }
+}
+```
+
+**`GET /api/reports/purposes/`** — per purpose, earmarked total (Σ balances of its
+accounts) vs `target_amount`. `progress` is the `current/target` ratio, or `null`
+when the purpose has no target.
+```json
+{
+  "purposes": [
+    { "id": 1, "name": "Emergency Fund", "target_amount": "20000.00",
+      "current_amount": "8200.00", "progress": 0.41,
+      "accounts": [ { "id": 2, "name": "Everyday Savings", "balance": "8200.00" } ] }
+  ]
+}
+```
+
 ---
 
 ## 5. Reference frontend client

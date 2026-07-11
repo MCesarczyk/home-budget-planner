@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "authn",
     "wallets",
     "transactions",
+    "reports",
 ]
 
 REST_FRAMEWORK = {
