@@ -7,7 +7,8 @@ from .models import Category, Subcategory, Transaction
 from .serializers import (
     CategorySerializer,
     SubcategorySerializer,
-    TransactionSerializer,
+    TransactionReadSerializer,
+    TransactionWriteSerializer,
 )
 
 
@@ -56,13 +57,22 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
                 description="Inclusive upper bound on tx_date (YYYY-MM-DD).",
             ),
         ]
-    )
+    ),
+    # Writes accept ids but respond with the nested read shape (see
+    # TransactionWriteSerializer.to_representation) — tell the schema that.
+    create=extend_schema(responses=TransactionReadSerializer),
+    update=extend_schema(responses=TransactionReadSerializer),
+    partial_update=extend_schema(responses=TransactionReadSerializer),
 )
 class TransactionViewSet(viewsets.ModelViewSet):
     """Single transactions endpoint. The derived ``type`` field distinguishes
-    income / expense / transfer."""
+    income / expense / transfer. Reads expand related data (accounts, subcategory,
+    category); writes set relations by id."""
 
-    serializer_class = TransactionSerializer
+    def get_serializer_class(self):
+        if self.action in ("list", "retrieve"):
+            return TransactionReadSerializer
+        return TransactionWriteSerializer
 
     def get_queryset(self):
         qs = Transaction.objects.select_related(

@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from wallets.serializers import AccountRefSerializer
+
 from .models import Category, Subcategory, Transaction
 
 
@@ -15,9 +17,26 @@ class SubcategorySerializer(serializers.ModelSerializer):
         fields = ["id", "category", "name"]
 
 
-class TransactionSerializer(serializers.ModelSerializer):
+class SubcategoryNestedSerializer(serializers.ModelSerializer):
+    """Subcategory with its category expanded — for embedding in transactions."""
+
+    category = CategorySerializer(read_only=True)
+
+    class Meta:
+        model = Subcategory
+        fields = ["id", "name", "category"]
+
+
+class TransactionReadSerializer(serializers.ModelSerializer):
+    """GET representation: related data expanded so a client can render a
+    transaction without extra lookups. All relations are already pulled by the
+    viewset's `select_related`, so nesting adds no queries."""
+
     # Derived from which account legs are set — never stored (see model docstring).
     type = serializers.SerializerMethodField()
+    source_account = AccountRefSerializer(read_only=True)
+    destination_account = AccountRefSerializer(read_only=True)
+    subcategory = SubcategoryNestedSerializer(read_only=True)
 
     class Meta:
         model = Transaction
@@ -35,6 +54,26 @@ class TransactionSerializer(serializers.ModelSerializer):
         if obj.source_account_id and obj.destination_account_id:
             return "transfer"
         return "income" if obj.destination_account_id else "expense"
+
+
+class TransactionWriteSerializer(serializers.ModelSerializer):
+    """POST/PUT/PATCH representation: related data is set by id. Carries the
+    cross-table validation; responses echo the nested read shape."""
+
+    class Meta:
+        model = Transaction
+        fields = [
+            "id",
+            "tx_date",
+            "amount",
+            "source_account",
+            "destination_account",
+            "subcategory",
+        ]
+
+    def to_representation(self, instance):
+        # Return the expanded shape after a write, matching GET.
+        return TransactionReadSerializer(instance, context=self.context).data
 
     def validate_amount(self, value):
         if value <= 0:

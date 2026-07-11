@@ -198,15 +198,34 @@ Classifies income/expense flows. **Full CRUD.**
 A money movement. Its **`type` is derived** from which account legs are set —
 you never send `type`; you set the legs. **Full CRUD** (including `DELETE`).
 
+> **Reads and writes have different shapes for the related fields.** On write
+> (POST/PUT/PATCH) you send `source_account`, `destination_account`, and
+> `subcategory` as **ids**. On read (and in the response to a write) those fields
+> come back **expanded** as nested objects, so you can render a transaction
+> without any extra lookups. All expansion is done via a single joined query — it
+> costs no extra round-trips or database queries.
+
+**Fields — write (request body)**
+
 | Field | Type | Notes |
 |---|---|---|
-| `id` | int | read-only |
-| `type` | enum | **read-only**: `income` \| `expense` \| `transfer` |
 | `tx_date` | date | **required**, `YYYY-MM-DD` |
 | `amount` | decimal string | **required**, must be `> 0` (positive magnitude) |
 | `source_account` | int (FK) | nullable — the account money leaves |
 | `destination_account` | int (FK) | nullable — the account money lands in |
 | `subcategory` | int (FK) | nullable — see rules below |
+
+**Fields — read (response body)**
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | int | |
+| `type` | enum | derived: `income` \| `expense` \| `transfer` |
+| `tx_date` | date | |
+| `amount` | decimal string | |
+| `source_account` | object \| null | `{ "id", "name" }` (account `balance` is **not** included here) |
+| `destination_account` | object \| null | `{ "id", "name" }` |
+| `subcategory` | object \| null | `{ "id", "name", "category": { "id", "name", "kind" } }` |
 
 **How the three types are expressed** (direction is encoded by the legs, never by
 the sign of `amount`):
@@ -243,6 +262,8 @@ Results are ordered newest first (`tx_date` desc).
 
 **Examples**
 
+Request bodies use **ids** (all three transaction shapes):
+
 ```jsonc
 // POST /api/transactions/  — an expense
 { "tx_date": "2024-03-01", "amount": "42.00", "source_account": 1, "subcategory": 20 }
@@ -254,9 +275,23 @@ Results are ordered newest first (`tx_date` desc).
 { "tx_date": "2024-03-10", "amount": "200.00", "source_account": 1, "destination_account": 2 }
 ```
 
-Response echoes the object with derived `type`:
+The response (to the expense above, and to every GET) returns the **expanded**
+shape with derived `type`:
+
 ```json
-{ "id": 42, "type": "expense", "tx_date": "2024-03-01", "amount": "42.00", "source_account": 1, "destination_account": null, "subcategory": 20 }
+{
+  "id": 42,
+  "type": "expense",
+  "tx_date": "2024-03-01",
+  "amount": "42.00",
+  "source_account": { "id": 1, "name": "Main Checking" },
+  "destination_account": null,
+  "subcategory": {
+    "id": 20,
+    "name": "Public Transit Pass",
+    "category": { "id": 6, "name": "Transportation", "kind": "expense" }
+  }
+}
 ```
 
 ---
