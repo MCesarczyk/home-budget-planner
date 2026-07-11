@@ -1,21 +1,41 @@
-# Demo setup: single Django service, SQLite kept inside the container.
-# No database service yet — planned migration to an external DB comes later.
+# Demo setup: Django app + PostgreSQL, each in its own container.
 services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hbp
+      POSTGRES_USER: hbp
+      POSTGRES_PASSWORD: hbp
+    volumes:
+      # Postgres data persists across `docker compose down` (drop with `-v`).
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # web waits for this before running migrations (see depends_on below).
+      test: ["CMD-SHELL", "pg_isready -U hbp -d hbp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   web:
     build: .
     ports:
       - "8088:8000"
     environment:
+      # DB connection — presence of POSTGRES_DB switches settings.py to Postgres.
+      POSTGRES_DB: hbp
+      POSTGRES_USER: hbp
+      POSTGRES_PASSWORD: hbp
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
       # Demo superuser auto-created on startup (see docker-entrypoint.sh).
       # Read by `createsuperuser --noinput`. Change these for anything real.
       DJANGO_SUPERUSER_USERNAME: admin
       DJANGO_SUPERUSER_EMAIL: admin@example.com
       DJANGO_SUPERUSER_PASSWORD: admin
-    # The SQLite file (config settings: BASE_DIR/db.sqlite3) lives on the
-    # container's writable layer. Recreating the container therefore starts from
-    # a fresh, freshly-seeded DB — i.e. migration + seed run on creation.
-    #
-    # Persisting it across `docker compose down` is intentionally left out for
-    # now: the DB sits inside the code dir (/app), so a naive volume would shadow
-    # the app. When you move to an external DB, wire that up here as its own
-    # service instead.
+    depends_on:
+      db:
+        # Don't start until Postgres reports healthy, so migrate can connect.
+        condition: service_healthy
+
+volumes:
+  pgdata:
