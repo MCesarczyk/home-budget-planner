@@ -8,7 +8,11 @@ authors = [
 license = "GNU GPLv3"
 requires-python = ">=3.12"
 dependencies = [
-    "django (>=6.0.7,<7.0.0)"
+    "django (>=6.0.7,<7.0.0)",
+    "djangorestframework (>=3.16,<4.0)",
+    "drf-spectacular (>=0.30.0,<0.31.0)",
+    "drf-spectacular-sidecar (>=2026.7.1,<2027.0.0)",
+    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)"
 ]
 
 
