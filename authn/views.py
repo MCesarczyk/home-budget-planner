@@ -2,6 +2,7 @@ from django.conf import settings
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -79,10 +80,19 @@ class LoginView(APIView):
     )
     def post(self, request):
         enforce_csrf(request)
-        # TokenObtainPairSerializer validates credentials and mints both tokens;
-        # invalid credentials raise AuthenticationFailed (401).
+        # TokenObtainPairSerializer validates credentials and mints both tokens.
+        # Bad credentials raise AuthenticationFailed; return an explicit 401
+        # (DRF would otherwise downgrade it to 403 — this view has no
+        # authenticator to emit a WWW-Authenticate header). Missing fields still
+        # surface as a 400 via the serializer's own ValidationError.
         serializer = TokenObtainPairSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except AuthenticationFailed:
+            return Response(
+                {"detail": "Invalid credentials."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         tokens = serializer.validated_data
 
         response = Response({"detail": "Login successful."})
@@ -110,9 +120,17 @@ class RefreshView(APIView):
                 {"detail": "No refresh token cookie."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        # Invalid/expired/blacklisted refresh tokens raise InvalidToken (401).
+        # Expired, blacklisted, and malformed refresh tokens all raise the base
+        # TokenError (not an APIException). Return an explicit 401 for every
+        # invalid-token case, consistent with the missing-cookie branch above.
         serializer = TokenRefreshSerializer(data={"refresh": raw_refresh})
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError:
+            return Response(
+                {"detail": "Invalid or expired refresh token."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         data = serializer.validated_data
 
         response = Response({"detail": "Token refreshed."})
