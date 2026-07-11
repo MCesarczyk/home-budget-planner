@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -38,8 +39,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "authn",
     "wallets",
     "transactions",
 ]
@@ -48,8 +51,14 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
     "EXCEPTION_HANDLER": "config.api.api_exception_handler",
-    # No auth configured yet — the API is open in this development build.
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    # JWT carried in an httpOnly cookie; every endpoint requires auth by default
+    # (login/refresh and the docs opt back out explicitly).
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "authn.authentication.CookieJWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -69,6 +78,34 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
 }
+
+# --- JWT authentication --------------------------------------------------------
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Rotate the refresh token on every refresh and blacklist the old one, so a
+    # leaked refresh token has a short useful life and logout can revoke it.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+}
+
+# Cookie carrying the JWTs. httpOnly keeps them unreadable from JavaScript (XSS
+# defense); the CSRF token below covers the risk cookies reintroduce. `secure` is
+# off under DEBUG so it works over plain HTTP locally, on everywhere else.
+AUTH_COOKIE = {
+    "ACCESS_NAME": "access_token",
+    "REFRESH_NAME": "refresh_token",
+    "HTTPONLY": True,
+    "SECURE": not DEBUG,
+    "SAMESITE": "Lax",
+    "PATH": "/",
+}
+
+# CSRF: the token cookie must stay readable by JS (double-submit), so it is NOT
+# httpOnly. Clients send it back in the X-CSRFToken header on unsafe requests.
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = not DEBUG
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
