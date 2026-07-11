@@ -62,17 +62,27 @@ def _date_bounds(request):
 
 
 class NetWorthView(APIView):
-    """Per-account balances and total net worth."""
+    """Balances grouped into assets and liabilities, with total net worth.
+    Liability balances are negative, so net_worth = total_assets + total_liabilities."""
 
     @extend_schema(responses=NetWorthSerializer)
     def get(self, request):
         balances = account_balances()
-        accounts = [
-            {"id": a.id, "name": a.name, "type": a.type, "balance": balances.get(a.id, ZERO)}
-            for a in Account.objects.all().order_by("name")
-        ]
-        net_worth = sum((a["balance"] for a in accounts), ZERO)
-        return Response(NetWorthSerializer({"accounts": accounts, "net_worth": net_worth}).data)
+        assets, liabilities = [], []
+        for a in Account.objects.all().order_by("name"):
+            row = {"id": a.id, "name": a.name, "type": a.type, "balance": balances.get(a.id, ZERO)}
+            (liabilities if a.is_liability else assets).append(row)
+
+        total_assets = sum((r["balance"] for r in assets), ZERO)
+        total_liabilities = sum((r["balance"] for r in liabilities), ZERO)
+        data = {
+            "assets": assets,
+            "total_assets": total_assets,
+            "liabilities": liabilities,
+            "total_liabilities": total_liabilities,
+            "net_worth": total_assets + total_liabilities,
+        }
+        return Response(NetWorthSerializer(data).data)
 
 
 class SpendingView(APIView):

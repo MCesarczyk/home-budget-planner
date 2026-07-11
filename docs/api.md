@@ -153,24 +153,34 @@ A savings goal an account can be earmarked toward. **Full CRUD.**
 ```
 
 ### 4.2 Accounts — `/api/accounts/`
-A container of money. **No `DELETE`** — accounts are soft-archived by setting
+A container of money — an **asset** (checking/savings/investment) or a
+**liability** (a debt). **No `DELETE`** — accounts are soft-archived by setting
 `is_active: false` via `PATCH` (a `DELETE` returns **405**).
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | int | read-only |
 | `name` | string(100) | **required**, unique |
-| `type` | enum | **required**: `checking` \| `savings` \| `investment` |
-| `opening_balance` | decimal string | defaults to `"0"` |
+| `type` | enum | **required**: `checking` \| `savings` \| `investment` \| `liability` |
+| `opening_balance` | decimal string | defaults to `"0"`; **negative** for a liability with debt outstanding |
 | `purpose` | int (FK) | nullable |
 | `is_active` | bool | defaults to `true` |
-| `balance` | decimal string | **read-only** — computed as opening_balance + incoming − outgoing |
+| `balance` | decimal string | **read-only** — opening_balance + incoming − outgoing (negative while a debt is unpaid) |
+| `is_liability` | bool | **read-only** — `true` when `type == "liability"` |
 
 ```json
-{ "id": 5, "name": "Brokerage Account", "type": "investment", "opening_balance": "12000.00", "purpose": 3, "is_active": true, "balance": "12600.00" }
+{ "id": 5, "name": "Brokerage Account", "type": "investment", "opening_balance": "12000.00", "purpose": 3, "is_active": true, "balance": "12600.00", "is_liability": false }
 ```
 
 To archive: `PATCH /api/accounts/5/` with `{"is_active": false}`.
+
+**Debts / liabilities.** Model a debt as a `liability` account whose
+`opening_balance` is the negative amount owed (e.g. a mortgage at `"-300000.00"`);
+its `balance` climbs toward `0` as it is paid down. Paying **principal** is a
+**transfer** from a cash account into the liability (net-worth neutral — see
+`/api/reports/net-worth/`). **Interest** is a separate **expense** (net-worth
+negative). A single real-world payment therefore splits into two transactions
+(principal transfer + interest expense).
 
 ### 4.3 Categories — `/api/categories/`
 Classifies income/expense flows. **Full CRUD.**
@@ -300,11 +310,16 @@ safe methods) need no `X-CSRFToken`. Money values are decimal strings. **Transfe
 are excluded** from spending and cashflow (they're internal moves that net to
 zero); spending is expense-only.
 
-**`GET /api/reports/net-worth/`** — per-account balances + total.
+**`GET /api/reports/net-worth/`** — balances grouped into assets and liabilities,
+with subtotals. Liability balances are negative, so
+`net_worth = total_assets + total_liabilities`.
 ```json
 {
-  "accounts": [ { "id": 1, "name": "Main Checking", "type": "checking", "balance": "7780.17" } ],
-  "net_worth": "65180.17"
+  "assets": [ { "id": 1, "name": "Main Checking", "type": "checking", "balance": "7780.17" } ],
+  "total_assets": "65180.17",
+  "liabilities": [ { "id": 7, "name": "Mortgage", "type": "liability", "balance": "-295000.00" } ],
+  "total_liabilities": "-295000.00",
+  "net_worth": "-229819.83"
 }
 ```
 

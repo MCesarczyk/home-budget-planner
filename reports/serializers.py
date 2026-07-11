@@ -16,7 +16,12 @@ class AccountBalanceSerializer(serializers.Serializer):
 
 
 class NetWorthSerializer(serializers.Serializer):
-    accounts = AccountBalanceSerializer(many=True)
+    assets = AccountBalanceSerializer(many=True)
+    total_assets = serializers.DecimalField(**_MONEY)
+    # Liability balances are negative; total_liabilities is their signed sum, so
+    # net_worth = total_assets + total_liabilities.
+    liabilities = AccountBalanceSerializer(many=True)
+    total_liabilities = serializers.DecimalField(**_MONEY)
     net_worth = serializers.DecimalField(**_MONEY)
 
 

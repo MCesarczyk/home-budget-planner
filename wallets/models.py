@@ -20,9 +20,12 @@ class Account(models.Model):
         CHECKING = "checking"
         SAVINGS = "savings"
         INVESTMENT = "investment"
+        LIABILITY = "liability"  # loans, mortgages, overdue bills — debt owed
 
     name = models.CharField(max_length=100, unique=True)
     type = models.CharField(max_length=10, choices=Type.choices)
+    # A liability starts negative (the amount owed) via opening_balance and climbs
+    # toward zero as it is paid down (a transfer into it). Assets stay >= 0.
     opening_balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     purpose = models.ForeignKey(
         Purpose,
@@ -36,7 +39,13 @@ class Account(models.Model):
     @property
     def balance(self):
         """Current balance = opening balance + money in − money out. Computed
-        from the transaction legs (reverse relations defined on Transaction)."""
+        from the transaction legs (reverse relations defined on Transaction).
+        Negative for a liability with debt still outstanding."""
         incoming = self.incoming_transactions.aggregate(s=Sum("amount"))["s"] or Decimal("0")
         outgoing = self.outgoing_transactions.aggregate(s=Sum("amount"))["s"] or Decimal("0")
         return self.opening_balance + incoming - outgoing
+
+    @property
+    def is_liability(self):
+        """Whether this account represents a debt (vs. an asset)."""
+        return self.type == self.Type.LIABILITY

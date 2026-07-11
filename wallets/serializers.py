@@ -24,6 +24,8 @@ class AccountRefSerializer(serializers.ModelSerializer):
 class AccountSerializer(serializers.ModelSerializer):
     # Computed from the transaction legs (see Account.balance); never written.
     balance = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    # Derived from `type` — true for debts (loans, mortgages, overdue bills).
+    is_liability = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Account
@@ -35,4 +37,5 @@ class AccountSerializer(serializers.ModelSerializer):
             "purpose",
             "is_active",
             "balance",
+            "is_liability",
         ]
