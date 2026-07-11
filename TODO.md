@@ -72,3 +72,21 @@ All fine for the demo/dev build, but not for anything real. Make env-driven:
 No brute-force protection on `/api/auth/login/` today. Add DRF throttling
 (`ScopedRateLimit` / `AnonRateThrottle`) scoped to the auth endpoints so repeated
 failed logins are rate-limited.
+
+## 6. Seed-data cleanup: legacy "Savings & Investments" expense category  · Priority: Low
+
+The seed data still models moving money into savings as **expense** transactions
+under the `Savings & Investments` category (subcategories `Emergency Fund`,
+`Index Fund`, `Retirement Account`). Per `docs/schema_design.md` (v2), this is
+superseded: in the accounts model, moving money to savings is a **transfer** (net
+worth unchanged) and the goal lives on the account's `purpose`. The old category
+was left in place with cleanup deferred.
+
+Consequence today: the spending report (`/api/reports/spending/`) counts these as
+expenses, so "savings" shows up as spending and overstates true outflow.
+
+Cleanup (data migration): reclassify those rows as transfers into the relevant
+savings account (clear `subcategory`, set `source_account`/`destination_account`),
+then retire the now-empty `Savings & Investments` category/subcategories. Verify
+the report totals afterward (spending drops by the reclassified amount; net worth
+is unchanged since transfers net to zero).
