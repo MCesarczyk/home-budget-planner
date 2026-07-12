@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Home Budget Planner — Django app (demo image).
-# SQLite lives inside the container; migrations + seed run on startup.
+# Talks to the `db` (PostgreSQL) service; migrations + seed run on startup.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

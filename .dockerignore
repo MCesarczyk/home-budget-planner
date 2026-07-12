@@ -16,7 +16,15 @@ venv/
 # Local data dumps (gitignored) — not needed in the image.
 dump/
 
+# Secrets / env files — must never be baked into the image.
+.env
+.env.*
+
+# Collected static — regenerated in-container by the entrypoint.
+staticfiles/
+
 # Docker files themselves
 Dockerfile
 .dockerignore
 docker-compose.yml
+docker-compose.prod.yml

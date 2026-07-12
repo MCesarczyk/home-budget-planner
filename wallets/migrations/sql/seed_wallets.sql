@@ -10,13 +10,13 @@ INSERT INTO wallets_purpose (id, name, description, target_amount) VALUES
 
 INSERT INTO wallets_account
     (id, name, type, opening_balance, purpose_id, is_active) VALUES
-    (1, 'Main Checking',         'checking',   2500.00, NULL, 1),
-    (2, 'Everyday Savings',      'savings',    8000.00, 1,    1),
-    (3, 'Home Repair Fund',      'savings',    4200.00, 2,    1),
-    (4, 'Retirement Term Deposit','savings',  30000.00, 3,    1),
-    (5, 'Brokerage Account',     'investment',12000.00, 3,    1),
-    (6, 'Vacation Pot',          'savings',    1500.00, 4,    1);
+    (1, 'Main Checking',         'checking',   2500.00, NULL, TRUE),
+    (2, 'Everyday Savings',      'savings',    8000.00, 1,    TRUE),
+    (3, 'Home Repair Fund',      'savings',    4200.00, 2,    TRUE),
+    (4, 'Retirement Term Deposit','savings',  30000.00, 3,    TRUE),
+    (5, 'Brokerage Account',     'investment',12000.00, 3,    TRUE),
+    (6, 'Vacation Pot',          'savings',    1500.00, 4,    TRUE);
 
--- Note: on SQLite the rowid auto-advances past the max inserted id, so no
--- sequence reset is needed. On PostgreSQL, run `manage.py sqlsequencereset
--- wallets` once after seeding so future auto-id inserts don't collide.
+-- Note: booleans use TRUE (portable — SQLite accepts it, PostgreSQL requires it).
+-- On PostgreSQL the id sequences are re-pointed past these explicit ids by
+-- migration wallets/0003_reset_sequences (no-op on SQLite).

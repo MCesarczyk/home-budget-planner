@@ -3,10 +3,11 @@
 Design for normalizing the flat `transactions` table (see `transactions_sample.sql`)
 into related `categories`, `subcategories`, and `transactions` tables.
 
-Status: **v1 & v2 implemented** (models + migrations). v1 covers `categories`,
+Status: **v1, v2 & v3 implemented** (models + migrations). v1 covers `categories`,
 `subcategories`, `transactions`; v2 adds the `wallets` app (`accounts`,
 `purposes`), transaction account legs, and transfers — see
-["v2 — Accounts & transfers"](#v2--accounts--transfers) below.
+["v2 — Accounts & transfers"](#v2--accounts--transfers); v3 adds **liabilities**
+(debts as negative-balance accounts) — see ["v3 — Liabilities"](#v3--liabilities-debts).
 
 ## Background
 
@@ -320,3 +321,64 @@ express them):
   transaction). Until such a need appears, the two-leg model is the sweet spot.
 - **Currency.** Single-currency assumed. Adding `currency` to `accounts` (and
   handling cross-currency transfers with an exchange rate) waits until it's needed.
+
+---
+
+# v3 — Liabilities (debts)
+
+Status: **implemented.** Adds a `liability` account type + `Account.is_liability`;
+the net-worth report groups assets vs. liabilities; an `Interest` expense category
+is seeded (migration `transactions/0007`).
+
+v3 lets the app track debts — a mortgage, a loan, an overdue bill — alongside
+assets. The insight is that **a debt is just an account whose balance is
+negative** (the amount owed), and the existing two-leg transaction model already
+expresses paying it down. No new tables and no changes to `transactions` were
+needed; the accounts feature extends to cover it.
+
+## The core insight
+
+An asset holds money you have; a liability holds money you owe. The only
+structural difference is the sign of the balance. So a debt is an `Account` with:
+
+- `type = "liability"` — a fourth `Account.Type`, so reports and the UI can tell
+  assets and liabilities apart. `Account.is_liability` derives from it.
+- a **negative `opening_balance`** — the amount outstanding when tracking starts
+  (e.g. a mortgage at `-300000.00`). `opening_balance` was already an unconstrained
+  `DecimalField`, so negatives needed no schema change.
+
+`Account.balance` (`opening_balance + Σincoming − Σoutgoing`) is unchanged and
+stays negative until the debt is paid off, then trends to zero.
+
+## How the money flows map (no new transaction shapes)
+
+| Event | Modeled as | Effect on net worth |
+|-------|------------|---------------------|
+| Debt outstanding at tracking start | negative `opening_balance` | — |
+| Pay **principal** | **transfer** cash account → liability | **neutral** (cash ↓, debt ↑ toward 0) |
+| **Interest** charged | **expense** (source = cash account; `Interest` category) | **negative** (a real cost) |
+| Incur a new **payable** (accrual, e.g. an overdue bill) | **expense** from the liability account | **negative** when incurred |
+| Settle that payable later | **transfer** cash account → liability | **neutral** |
+
+Paying down principal being net-worth-neutral is *correct*: it converts cash into
+debt reduction, leaving net worth unchanged — only its composition changes.
+Transfers already net to zero (v2), so this falls out for free.
+
+## Net worth becomes assets − liabilities
+
+`Account.balance` summed over all accounts now yields *true* net worth, because
+liability balances are negative. `GET /api/v1/reports/net-worth/` groups the accounts
+into `assets` / `liabilities` with subtotals, where
+`net_worth = total_assets + total_liabilities` (the latter being a negative sum).
+
+## Deferred (not in v3)
+
+- **Split transactions.** A single real mortgage payment is principal + interest,
+  which here requires two records (one transfer, one expense). This is the same
+  split-transaction limitation deferred in v2 — the trigger for a full
+  double-entry ledger if it ever becomes painful.
+- **Interest accrual / amortization schedules.** Interest is recorded when it
+  occurs, not projected from a rate and schedule. Amortization forecasting is out
+  of scope.
+- **Payoff targets.** Purposes carry a `target_amount` for savings goals; there is
+  no analogous "payoff by" target on liabilities yet.
