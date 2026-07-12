@@ -55,17 +55,18 @@ container entrypoint). A `POST /api/v1/auth/password/` to change the password wi
 going through the Django admin / shell would be a nice-to-have. Skip entirely if
 the admin UI is acceptable for this.
 
-## 4. Production hardening  · Priority: Medium (before any real deployment)
+## 4. Production hardening  · Priority: Medium — **mostly done**
 
-All fine for the demo/dev build, but not for anything real. Make env-driven:
+Implemented: `DEBUG`/`SECRET_KEY`/`ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS` are
+env-driven; secure auth/CSRF/session cookies + `SECURE_PROXY_SSL_HEADER` when
+`DEBUG=False`; WhiteNoise + `collectstatic`; gunicorn; `docker-compose.prod.yml`
+with an external DB and secrets from `.env.prod` (`.env.prod.example` template).
 
-- `DEBUG` (default `False` in prod), `SECRET_KEY` (from env, not the hardcoded
-  dev key), `ALLOWED_HOSTS`.
-- Auth-cookie `Secure` flag already auto-enables when `DEBUG=False` — which means
-  prod requires **HTTPS**.
-- `DEBUG=False` turns off Django's dev static-file serving that the Swagger sidecar
-  relies on — add **WhiteNoise** (or serve `/static/` via the reverse proxy) and
-  run `collectstatic`.
+Remaining (operator/env side, not code):
+- Put real values in `.env.prod` (generate a strong `SECRET_KEY`, set the domain).
+- Optionally enable `SECURE_SSL_REDIRECT` / `SECURE_HSTS_SECONDS` via env once
+  HTTPS is stable (both are opt-in — `check --deploy` warns until then).
+- DB backups + a rollback plan for the external Postgres (not app code).
 
 ## 5. Login throttling  · Priority: Medium
 

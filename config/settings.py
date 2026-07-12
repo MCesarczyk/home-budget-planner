@@ -18,16 +18,30 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# Config is env-driven so the same image runs in dev (defaults below) and prod
+# (values injected via docker-compose.prod.yml / .env.prod). See the deployment
+# checklist: https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-$239kks%uy*-dj-l-9+s=77fp9r6_is%o6e)(f&b_xr^0htvs&"
+# SECURITY WARNING: set SECRET_KEY from the environment in production. The literal
+# fallback is for local dev only.
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-$239kks%uy*-dj-l-9+s=77fp9r6_is%o6e)(f&b_xr^0htvs&",
+)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECURITY WARNING: never run with DEBUG on in production. Defaults on for dev;
+# docker-compose.prod.yml sets DEBUG=False.
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = []
+# Comma-separated list, e.g. "example.com,www.example.com". Required when DEBUG
+# is off; under DEBUG Django already allows localhost.
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
+
+# Origins trusted for unsafe (CSRF-protected) requests — must include scheme,
+# e.g. "https://example.com". Needed once served from a real domain.
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
 
 
 # Application definition
@@ -111,6 +125,9 @@ CSRF_COOKIE_SECURE = not DEBUG
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves collected static files (admin, Swagger sidecar) in production, where
+    # runserver's dev static serving is off. No-op behind runserver in dev.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -201,3 +218,29 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+# `collectstatic` gathers admin + Swagger-sidecar assets here; WhiteNoise serves
+# them in production.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+if not DEBUG:
+    # Compress + serve with far-future cache headers in production.
+    STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedStaticFilesStorage"
+
+
+# Production hardening — only active when DEBUG is off. Assumes a TLS-terminating
+# reverse proxy in front (the VPS setup): trust its X-Forwarded-Proto so Django
+# knows requests are HTTPS. Auth/CSRF cookies are already Secure via `not DEBUG`.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = True
+    SESSION_COOKIE_SECURE = True
+    # Opt-in extras (set via env). SSL redirect is usually the proxy's job; HSTS
+    # locks browsers to HTTPS so enable it only once HTTPS is stable.
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+    SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
