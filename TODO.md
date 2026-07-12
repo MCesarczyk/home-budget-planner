@@ -51,7 +51,7 @@ depend on before it starts depending on them. Suggested coverage:
 ## 3. Password-change endpoint  · Priority: Low
 
 Registration is **not applicable** (single-user; the `admin` user is seeded by the
-container entrypoint). A `POST /api/auth/password/` to change the password without
+container entrypoint). A `POST /api/v1/auth/password/` to change the password without
 going through the Django admin / shell would be a nice-to-have. Skip entirely if
 the admin UI is acceptable for this.
 
@@ -69,7 +69,7 @@ All fine for the demo/dev build, but not for anything real. Make env-driven:
 
 ## 5. Login throttling  · Priority: Medium
 
-No brute-force protection on `/api/auth/login/` today. Add DRF throttling
+No brute-force protection on `/api/v1/auth/login/` today. Add DRF throttling
 (`ScopedRateLimit` / `AnonRateThrottle`) scoped to the auth endpoints so repeated
 failed logins are rate-limited.
 
@@ -82,7 +82,7 @@ superseded: in the accounts model, moving money to savings is a **transfer** (ne
 worth unchanged) and the goal lives on the account's `purpose`. The old category
 was left in place with cleanup deferred.
 
-Consequence today: the spending report (`/api/reports/spending/`) counts these as
+Consequence today: the spending report (`/api/v1/reports/spending/`) counts these as
 expenses, so "savings" shows up as spending and overstates true outflow.
 
 Cleanup (data migration): reclassify those rows as transfers into the relevant

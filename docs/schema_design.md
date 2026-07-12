@@ -367,7 +367,7 @@ Transfers already net to zero (v2), so this falls out for free.
 ## Net worth becomes assets − liabilities
 
 `Account.balance` summed over all accounts now yields *true* net worth, because
-liability balances are negative. `GET /api/reports/net-worth/` groups the accounts
+liability balances are negative. `GET /api/v1/reports/net-worth/` groups the accounts
 into `assets` / `liabilities` with subtotals, where
 `net_worth = total_assets + total_liabilities` (the latter being a negative sum).
 

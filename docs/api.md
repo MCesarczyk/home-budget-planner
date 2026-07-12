@@ -4,10 +4,10 @@ Contracts for building a browser frontend against the Home Budget Planner API.
 Everything here is the actual behaviour of the current implementation.
 
 - **Base URL** (local dev / Docker): `http://localhost:8088`
-- **API root**: all endpoints are under `/api/`
+- **API root**: all endpoints are under `/api/v1/`
 - **Content type**: `application/json` for request and response bodies
-- **Interactive reference**: Swagger UI at `/api/docs/`, ReDoc at `/api/redoc/`,
-  raw OpenAPI schema at `/api/schema/` (all public, no auth required)
+- **Interactive reference**: Swagger UI at `/api/v1/docs/`, ReDoc at `/api/v1/redoc/`,
+  raw OpenAPI schema at `/api/v1/schema/` (all public, no auth required)
 
 ---
 
@@ -23,7 +23,7 @@ Three cookies are involved:
 |---|---|---|---|---|
 | `access_token` | login / refresh | ✅ yes | ❌ no | Authenticates every request (15 min lifetime) |
 | `refresh_token` | login / refresh | ✅ yes | ❌ no | Mints a new access token (7 day lifetime) |
-| `csrftoken` | `GET /api/auth/csrf/` | ❌ no | ✅ yes | Echoed back in the `X-CSRFToken` header |
+| `csrftoken` | `GET /api/v1/auth/csrf/` | ❌ no | ✅ yes | Echoed back in the `X-CSRFToken` header |
 
 ### The two rules
 
@@ -37,18 +37,18 @@ Three cookies are involved:
 ### Login sequence
 
 ```
-GET  /api/auth/csrf/          → sets csrftoken cookie (do this once on app load)
-POST /api/auth/login/         → {username, password} + X-CSRFToken header
+GET  /api/v1/auth/csrf/          → sets csrftoken cookie (do this once on app load)
+POST /api/v1/auth/login/         → {username, password} + X-CSRFToken header
                                 → sets access_token + refresh_token cookies
 ... authenticated requests ...
-POST /api/auth/refresh/       → when a request 401s, refresh then retry
-POST /api/auth/logout/        → clears cookies + revokes refresh token
+POST /api/v1/auth/refresh/       → when a request 401s, refresh then retry
+POST /api/v1/auth/logout/        → clears cookies + revokes refresh token
 ```
 
 ### Token expiry & refresh
 
 The access token lives **15 minutes**. When any data endpoint returns **401**,
-call `POST /api/auth/refresh/` (it uses the `refresh_token` cookie) and retry the
+call `POST /api/v1/auth/refresh/` (it uses the `refresh_token` cookie) and retry the
 original request once. If refresh also returns 401, the session is dead — send the
 user back to login. Refresh tokens rotate on every use, so the old one is revoked
 immediately (a stolen refresh token has a short life).
@@ -57,12 +57,12 @@ immediately (a stolen refresh token has a short life).
 
 ## 2. Auth endpoints
 
-### `GET /api/auth/csrf/`
+### `GET /api/v1/auth/csrf/`
 Public. Sets the `csrftoken` cookie. Call once before the first login.
 
 - **200** `{"detail": "CSRF cookie set."}`
 
-### `POST /api/auth/login/`
+### `POST /api/v1/auth/login/`
 Public. Requires the `X-CSRFToken` header.
 
 - **Request** `{"username": "string", "password": "string"}`
@@ -71,7 +71,7 @@ Public. Requires the `X-CSRFToken` header.
 - **401** `{"detail": "Invalid credentials."}` — wrong username/password
 - **403** `{"detail": "CSRF Failed: ..."}` — missing/invalid `X-CSRFToken`
 
-### `POST /api/auth/refresh/`
+### `POST /api/v1/auth/refresh/`
 Public. Requires the `X-CSRFToken` header. Uses the `refresh_token` cookie (no body).
 
 - **200** `{"detail": "Token refreshed."}` — sets new `access_token` (and rotated `refresh_token`)
@@ -79,13 +79,13 @@ Public. Requires the `X-CSRFToken` header. Uses the `refresh_token` cookie (no b
 - **401** `{"detail": "Invalid or expired refresh token."}` — expired/revoked/malformed token
 - **403** `{"detail": "CSRF Failed: ..."}` — missing/invalid `X-CSRFToken`
 
-### `POST /api/auth/logout/`
+### `POST /api/v1/auth/logout/`
 **Authenticated.** Requires the `X-CSRFToken` header. Revokes the refresh token
 (blacklist) and clears both auth cookies.
 
 - **200** `{"detail": "Logout successful."}`
 
-### `GET /api/auth/me/`
+### `GET /api/v1/auth/me/`
 **Authenticated.** Returns the current user.
 
 - **200** `{"id": 1, "username": "admin", "email": "admin@example.com", "is_staff": true}`
@@ -95,7 +95,7 @@ Public. Requires the `X-CSRFToken` header. Uses the `refresh_token` cookie (no b
 
 ## 3. Conventions for all data endpoints
 
-**Every** `/api/` resource below requires authentication. Unauthenticated
+**Every** `/api/v1/` resource below requires authentication. Unauthenticated
 requests get **401** `{"detail": "Authentication credentials were not provided."}`.
 
 ### Pagination
@@ -104,7 +104,7 @@ List endpoints are paginated, **50 items per page**. Use `?page=N`.
 ```json
 {
   "count": 179,
-  "next": "http://localhost:8088/api/transactions/?page=2",
+  "next": "http://localhost:8088/api/v1/transactions/?page=2",
   "previous": null,
   "results": [ /* array of objects */ ]
 }
@@ -139,7 +139,7 @@ write. Standard REST routes per resource:
 `GET /` (list), `POST /` (create), `GET /{id}/` (retrieve),
 `PUT|PATCH /{id}/` (update), `DELETE /{id}/` (delete) — except where noted.
 
-### 4.1 Purposes — `/api/purposes/`
+### 4.1 Purposes — `/api/v1/purposes/`
 A savings goal an account can be earmarked toward. **Full CRUD.**
 
 | Field | Type | Notes |
@@ -155,7 +155,7 @@ A savings goal an account can be earmarked toward. **Full CRUD.**
 { "id": 1, "name": "Emergency Fund", "description": "3-6 months of expenses", "target_amount": "20000.00" }
 ```
 
-### 4.2 Accounts — `/api/accounts/`
+### 4.2 Accounts — `/api/v1/accounts/`
 A container of money — an **asset** (checking/savings/investment) or a
 **liability** (a debt). **No `DELETE`** — accounts are soft-archived by setting
 `is_active: false` via `PATCH` (a `DELETE` returns **405**).
@@ -175,17 +175,17 @@ A container of money — an **asset** (checking/savings/investment) or a
 { "id": 5, "name": "Brokerage Account", "type": "investment", "opening_balance": "12000.00", "purpose": 3, "is_active": true, "balance": "12600.00", "is_liability": false }
 ```
 
-To archive: `PATCH /api/accounts/5/` with `{"is_active": false}`.
+To archive: `PATCH /api/v1/accounts/5/` with `{"is_active": false}`.
 
 **Debts / liabilities.** Model a debt as a `liability` account whose
 `opening_balance` is the negative amount owed (e.g. a mortgage at `"-300000.00"`);
 its `balance` climbs toward `0` as it is paid down. Paying **principal** is a
 **transfer** from a cash account into the liability (net-worth neutral — see
-`/api/reports/net-worth/`). **Interest** is a separate **expense** (net-worth
+`/api/v1/reports/net-worth/`). **Interest** is a separate **expense** (net-worth
 negative). A single real-world payment therefore splits into two transactions
 (principal transfer + interest expense).
 
-### 4.3 Categories — `/api/categories/`
+### 4.3 Categories — `/api/v1/categories/`
 Classifies income/expense flows. **Full CRUD.**
 
 | Field | Type | Notes |
@@ -196,7 +196,7 @@ Classifies income/expense flows. **Full CRUD.**
 
 - `DELETE` returns **409** if subcategories reference it.
 
-### 4.4 Subcategories — `/api/subcategories/`
+### 4.4 Subcategories — `/api/v1/subcategories/`
 **Full CRUD.**
 
 | Field | Type | Notes |
@@ -207,7 +207,7 @@ Classifies income/expense flows. **Full CRUD.**
 
 - `DELETE` returns **409** if transactions reference it.
 
-### 4.5 Transactions — `/api/transactions/`
+### 4.5 Transactions — `/api/v1/transactions/`
 A money movement. Its **`type` is derived** from which account legs are set —
 you never send `type`; you set the legs. **Full CRUD** (including `DELETE`).
 
@@ -278,13 +278,13 @@ Results are ordered newest first (`tx_date` desc).
 Request bodies use **ids** (all three transaction shapes):
 
 ```jsonc
-// POST /api/transactions/  — an expense
+// POST /api/v1/transactions/  — an expense
 { "tx_date": "2024-03-01", "amount": "42.00", "source_account": 1, "subcategory": 20 }
 
-// POST /api/transactions/  — income
+// POST /api/v1/transactions/  — income
 { "tx_date": "2024-03-05", "amount": "3358.67", "destination_account": 1, "subcategory": 1 }
 
-// POST /api/transactions/  — a transfer (no subcategory)
+// POST /api/v1/transactions/  — a transfer (no subcategory)
 { "tx_date": "2024-03-10", "amount": "200.00", "source_account": 1, "destination_account": 2 }
 ```
 
@@ -307,13 +307,13 @@ shape with derived `type`:
 }
 ```
 
-### 4.6 Reports — `/api/reports/`
+### 4.6 Reports — `/api/v1/reports/`
 Read-only aggregations for dashboards. All are `GET`, require auth, and (being
 safe methods) need no `X-CSRFToken`. Money values are decimal strings. **Transfers
 are excluded** from spending and cashflow (they're internal moves that net to
 zero); spending is expense-only.
 
-**`GET /api/reports/net-worth/`** — balances grouped into assets and liabilities,
+**`GET /api/v1/reports/net-worth/`** — balances grouped into assets and liabilities,
 with subtotals. Liability balances are negative, so
 `net_worth = total_assets + total_liabilities` (assets abbreviated to one row here):
 ```json
@@ -329,7 +329,7 @@ with subtotals. Liability balances are negative, so
 }
 ```
 
-**`GET /api/reports/spending/?date_from=&date_to=`** — expenses grouped by
+**`GET /api/v1/reports/spending/?date_from=&date_to=`** — expenses grouped by
 category, with a subcategory breakdown, over an optional inclusive date range.
 ```json
 {
@@ -342,7 +342,7 @@ category, with a subcategory breakdown, over an optional inclusive date range.
 }
 ```
 
-**`GET /api/reports/cashflow/?date_from=&date_to=`** — monthly income / expense /
+**`GET /api/v1/reports/cashflow/?date_from=&date_to=`** — monthly income / expense /
 net over an optional inclusive date range, plus grand totals.
 ```json
 {
@@ -352,7 +352,7 @@ net over an optional inclusive date range, plus grand totals.
 }
 ```
 
-**`GET /api/reports/purposes/`** — per purpose, earmarked total (Σ balances of its
+**`GET /api/v1/reports/purposes/`** — per purpose, earmarked total (Σ balances of its
 accounts) vs `target_amount`. `progress` is the `current/target` ratio, or `null`
 when the purpose has no target.
 ```json
@@ -396,8 +396,8 @@ async function request(method, path, body) {
   let res = await fetch(BASE + path, opts);
 
   // Access token expired → refresh once, then retry.
-  if (res.status === 401 && path !== "/api/auth/refresh/") {
-    const refreshed = await fetch(BASE + "/api/auth/refresh/", {
+  if (res.status === 401 && path !== "/api/v1/auth/refresh/") {
+    const refreshed = await fetch(BASE + "/api/v1/auth/refresh/", {
       method: "POST",
       headers: { "X-CSRFToken": getCookie("csrftoken") },
       credentials: "include",
@@ -409,18 +409,18 @@ async function request(method, path, body) {
 
 // --- usage ---
 export const api = {
-  async bootstrap() { await fetch(BASE + "/api/auth/csrf/", { credentials: "include" }); },
-  login(username, password) { return request("POST", "/api/auth/login/", { username, password }); },
-  logout() { return request("POST", "/api/auth/logout/"); },
-  me() { return request("GET", "/api/auth/me/"); },
+  async bootstrap() { await fetch(BASE + "/api/v1/auth/csrf/", { credentials: "include" }); },
+  login(username, password) { return request("POST", "/api/v1/auth/login/", { username, password }); },
+  logout() { return request("POST", "/api/v1/auth/logout/"); },
+  me() { return request("GET", "/api/v1/auth/me/"); },
 
-  listTransactions(query = "") { return request("GET", "/api/transactions/" + query); },
-  createTransaction(data) { return request("POST", "/api/transactions/", data); },
-  updateTransaction(id, data) { return request("PATCH", `/api/transactions/${id}/`, data); },
-  deleteTransaction(id) { return request("DELETE", `/api/transactions/${id}/`); },
+  listTransactions(query = "") { return request("GET", "/api/v1/transactions/" + query); },
+  createTransaction(data) { return request("POST", "/api/v1/transactions/", data); },
+  updateTransaction(id, data) { return request("PATCH", `/api/v1/transactions/${id}/`, data); },
+  deleteTransaction(id) { return request("DELETE", `/api/v1/transactions/${id}/`); },
 
-  listAccounts() { return request("GET", "/api/accounts/"); },
-  archiveAccount(id) { return request("PATCH", `/api/accounts/${id}/`, { is_active: false }); },
+  listAccounts() { return request("GET", "/api/v1/accounts/"); },
+  archiveAccount(id) { return request("PATCH", `/api/v1/accounts/${id}/`, { is_active: false }); },
 };
 
 // app startup:
@@ -430,10 +430,10 @@ export const api = {
 ```
 
 ### App-load checklist for the frontend
-1. `GET /api/auth/csrf/` to obtain the `csrftoken` cookie.
-2. Try `GET /api/auth/me/` — 200 means an existing session is still valid; 401
+1. `GET /api/v1/auth/csrf/` to obtain the `csrftoken` cookie.
+2. Try `GET /api/v1/auth/me/` — 200 means an existing session is still valid; 401
    means show the login screen.
-3. On login, `POST /api/auth/login/` with the `X-CSRFToken` header.
+3. On login, `POST /api/v1/auth/login/` with the `X-CSRFToken` header.
 4. Wrap all calls so a 401 triggers one refresh-and-retry (see above).
 5. Send `X-CSRFToken` on every `POST/PUT/PATCH/DELETE`.
 

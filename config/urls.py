@@ -37,21 +37,19 @@ router.register("categories", CategoryViewSet)
 router.register("subcategories", SubcategoryViewSet)
 router.register("transactions", TransactionViewSet, basename="transaction")
 
+# All API surface lives under a version prefix (URL-path versioning). A future
+# breaking revision mounts a parallel `api/v2/` include; `api/v1/` keeps working.
+v1_patterns = [
+    path('auth/', include('authn.urls')),
+    path('reports/', include('reports.urls')),
+    # OpenAPI schema + interactive docs (describe this version).
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('', include(router.urls)),
+]
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('authn.urls')),
-    path('api/reports/', include('reports.urls')),
-    path('api/', include(router.urls)),
-    # OpenAPI schema + interactive docs.
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path(
-        'api/docs/',
-        SpectacularSwaggerView.as_view(url_name='schema'),
-        name='swagger-ui',
-    ),
-    path(
-        'api/redoc/',
-        SpectacularRedocView.as_view(url_name='schema'),
-        name='redoc',
-    ),
+    path('api/v1/', include(v1_patterns)),
 ]
