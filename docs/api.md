@@ -70,6 +70,7 @@ Public. Requires the `X-CSRFToken` header.
 - **400** `{"password": ["This field is required."]}` — missing field(s)
 - **401** `{"detail": "Invalid credentials."}` — wrong username/password
 - **403** `{"detail": "CSRF Failed: ..."}` — missing/invalid `X-CSRFToken`
+- **429** `{"detail": "Request was throttled. Expected available in N seconds."}` — too many login attempts from your IP (rate-limited; every attempt counts). Retry after the `Retry-After` header.
 
 ### `POST /api/v1/auth/refresh/`
 Public. Requires the `X-CSRFToken` header. Uses the `refresh_token` cookie (no body).

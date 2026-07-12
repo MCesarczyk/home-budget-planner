@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer,
@@ -73,6 +74,10 @@ class LoginView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    # Rate-limit login attempts per IP (see DEFAULT_THROTTLE_RATES["login"]);
+    # exceeding it returns 429. Every attempt counts, success or failure.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
 
     @extend_schema(
         request=LoginSerializer,

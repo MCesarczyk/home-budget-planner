@@ -76,6 +76,17 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Per-IP rate limit for the login endpoint (brute-force defense). Applied only
+    # where a view opts in via `throttle_scope` — not global. Uses the default
+    # cache; with multiple gunicorn workers use a shared cache (Redis) for an
+    # exact limit rather than per-worker.
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "5/min",
+    },
+    # Number of trusted reverse proxies in front of the app. Set to 1 in prod (via
+    # env) so throttling keys off the real client IP from X-Forwarded-For and
+    # can't be spoofed. None (dev / no proxy) → uses REMOTE_ADDR.
+    "NUM_PROXIES": int(os.environ["NUM_PROXIES"]) if os.environ.get("NUM_PROXIES") else None,
 }
 
 SPECTACULAR_SETTINGS = {

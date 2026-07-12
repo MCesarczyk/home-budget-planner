@@ -68,11 +68,16 @@ Remaining (operator/env side, not code):
   HTTPS is stable (both are opt-in — `check --deploy` warns until then).
 - DB backups + a rollback plan for the external Postgres (not app code).
 
-## 5. Login throttling  · Priority: Medium
+## 5. Login throttling  · Priority: Medium — **done**
 
-No brute-force protection on `/api/v1/auth/login/` today. Add DRF throttling
-(`ScopedRateLimit` / `AnonRateThrottle`) scoped to the auth endpoints so repeated
-failed logins are rate-limited.
+`/api/v1/auth/login/` is rate-limited to `5/min` per IP (`ScopedRateThrottle`,
+scope `login`); exceeding it returns 429 with `Retry-After`. `NUM_PROXIES` (env)
+makes it key off the real client IP behind the reverse proxy.
+
+Possible later refinement: per-username throttling (in addition to per-IP) to blunt
+distributed/low-and-slow attacks against a single account, and a shared cache
+(Redis) so the limit is exact across multiple gunicorn workers rather than
+per-worker.
 
 ## 6. Seed-data cleanup: legacy "Savings & Investments" expense category  · Priority: Low
 
