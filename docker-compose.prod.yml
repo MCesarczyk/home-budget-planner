@@ -12,16 +12,22 @@ services:
     # (pointing at the external DB), and DJANGO_SUPERUSER_* all live here.
     env_file:
       - .env.prod
-    # Production WSGI server (not runserver). Entrypoint still runs migrate +
-    # collectstatic + superuser bootstrap before this starts.
+    # Production WSGI server (not runserver). gunicorn listens on the CONTAINER
+    # port 8000 — keep this 8000 and control the public port via `ports` below.
+    # Entrypoint runs migrate + collectstatic + superuser bootstrap before this.
     command: >
       gunicorn config.wsgi:application
       --bind 0.0.0.0:8000
       --workers 3
       --timeout 60
       --access-logfile -
-    # Bind to loopback only: the reverse proxy on the VPS forwards to it; the app
-    # is never exposed to the public internet directly. Point your proxy at
-    # 127.0.0.1:8000 (proxy must forward Host and X-Forwarded-Proto).
+    # "HOST:CONTAINER" — the RIGHT side must be 8000 (gunicorn's port); the LEFT
+    # side is the VM port that your host/proxy forwards public traffic to. This
+    # mirrors the dev compose (which used 8088:8000 and is reachable at
+    # srv28.mikr.us:30391 — i.e. mikr.us forwards public 30391 -> VM 8088). If your
+    # dev used a different host port, use that same number here.
+    #
+    # With a same-host TLS reverse proxy instead, use "127.0.0.1:8000:8000" and
+    # point the proxy at 127.0.0.1:8000.
     ports:
-      - "127.0.0.1:8000:8000"
+      - "${WEB_PORT:-8000}:8000"
