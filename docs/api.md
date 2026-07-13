@@ -8,6 +8,9 @@ Everything here is the actual behaviour of the current implementation.
 - **Content type**: `application/json` for request and response bodies
 - **Interactive reference**: Swagger UI at `/api/v1/docs/`, ReDoc at `/api/v1/redoc/`,
   raw OpenAPI schema at `/api/v1/schema/` (all public, no auth required)
+- **Health check**: `GET /api/v1/health/` — public, no auth. Returns `200 {"status": "ok"}`
+  when the process is up and the database is reachable; `503` otherwise. Ideal for
+  uptime monitors / the quickest "is it up?" check.
 
 ---
 

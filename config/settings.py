@@ -43,6 +43,12 @@ CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
 ]
 
+# HTTPS posture, decoupled from DEBUG. When on: cookies are Secure (HTTPS-only)
+# and HTTPS hardening applies. Defaults on in production, off in dev. Set
+# SECURE_COOKIES=False if you MUST serve over plain HTTP (no TLS) — cookies then
+# work over HTTP but traffic (including the JWT) is unencrypted. Prefer HTTPS.
+SECURE_COOKIES = os.environ.get("SECURE_COOKIES", str(not DEBUG)).lower() == "true"
+
 
 # Application definition
 
@@ -104,6 +110,19 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
+    # Section order in Swagger UI / ReDoc. Declaring the tags at the schema root
+    # fixes their display order (health first, reports last); any tag not listed
+    # here would be appended after these.
+    "TAGS": [
+        {"name": "health", "description": "Liveness / readiness probe (public)."},
+        {"name": "auth", "description": "Cookie-based JWT authentication."},
+        {"name": "accounts", "description": "Money containers — assets and liabilities."},
+        {"name": "purposes", "description": "Savings goals accounts can be earmarked toward."},
+        {"name": "categories", "description": "Income / expense classification."},
+        {"name": "subcategories", "description": "Subdivisions of a category."},
+        {"name": "transactions", "description": "Money movements (income / expense / transfer)."},
+        {"name": "reports", "description": "Read-only aggregations for dashboards."},
+    ],
 }
 
 # --- JWT authentication --------------------------------------------------------
@@ -117,13 +136,13 @@ SIMPLE_JWT = {
 }
 
 # Cookie carrying the JWTs. httpOnly keeps them unreadable from JavaScript (XSS
-# defense); the CSRF token below covers the risk cookies reintroduce. `secure` is
-# off under DEBUG so it works over plain HTTP locally, on everywhere else.
+# defense); the CSRF token below covers the risk cookies reintroduce. `Secure`
+# tracks SECURE_COOKIES so the cookies work over plain HTTP when that's off.
 AUTH_COOKIE = {
     "ACCESS_NAME": "access_token",
     "REFRESH_NAME": "refresh_token",
     "HTTPONLY": True,
-    "SECURE": not DEBUG,
+    "SECURE": SECURE_COOKIES,
     "SAMESITE": "Lax",
     "PATH": "/",
 }
@@ -132,7 +151,7 @@ AUTH_COOKIE = {
 # httpOnly. Clients send it back in the X-CSRFToken header on unsafe requests.
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = SECURE_COOKIES
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -242,10 +261,10 @@ if not DEBUG:
     STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedStaticFilesStorage"
 
 
-# Production hardening — only active when DEBUG is off. Assumes a TLS-terminating
-# reverse proxy in front (the VPS setup): trust its X-Forwarded-Proto so Django
-# knows requests are HTTPS. Auth/CSRF cookies are already Secure via `not DEBUG`.
-if not DEBUG:
+# HTTPS hardening — active whenever the site is served over HTTPS (SECURE_COOKIES),
+# independent of DEBUG. Assumes a TLS-terminating reverse proxy in front: trust its
+# X-Forwarded-Proto so Django knows requests are HTTPS.
+if SECURE_COOKIES:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
     SESSION_COOKIE_SECURE = True

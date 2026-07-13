@@ -23,6 +23,7 @@ from drf_spectacular.views import (
 )
 from rest_framework.routers import DefaultRouter
 
+from config.health import HealthView
 from transactions.views import (
     CategoryViewSet,
     SubcategoryViewSet,
@@ -40,6 +41,7 @@ router.register("transactions", TransactionViewSet, basename="transaction")
 # All API surface lives under a version prefix (URL-path versioning). A future
 # breaking revision mounts a parallel `api/v2/` include; `api/v1/` keeps working.
 v1_patterns = [
+    path('health/', HealthView.as_view(), name='health'),
     path('auth/', include('authn.urls')),
     path('reports/', include('reports.urls')),
     # OpenAPI schema + interactive docs (describe this version).
