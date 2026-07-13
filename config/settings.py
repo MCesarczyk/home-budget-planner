@@ -110,6 +110,19 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
+    # Section order in Swagger UI / ReDoc. Declaring the tags at the schema root
+    # fixes their display order (health first, reports last); any tag not listed
+    # here would be appended after these.
+    "TAGS": [
+        {"name": "health", "description": "Liveness / readiness probe (public)."},
+        {"name": "auth", "description": "Cookie-based JWT authentication."},
+        {"name": "accounts", "description": "Money containers — assets and liabilities."},
+        {"name": "purposes", "description": "Savings goals accounts can be earmarked toward."},
+        {"name": "categories", "description": "Income / expense classification."},
+        {"name": "subcategories", "description": "Subdivisions of a category."},
+        {"name": "transactions", "description": "Money movements (income / expense / transfer)."},
+        {"name": "reports", "description": "Read-only aggregations for dashboards."},
+    ],
 }
 
 # --- JWT authentication --------------------------------------------------------
