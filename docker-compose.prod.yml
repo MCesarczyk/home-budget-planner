@@ -31,3 +31,4 @@ services:
     # point the proxy at 127.0.0.1:8000.
     ports:
       - "${WEB_PORT:-8000}:8000"
+
