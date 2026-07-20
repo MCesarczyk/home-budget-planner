@@ -1,23 +1,11 @@
-from pathlib import Path
-
 from django.db import migrations
-
-SQL_DIR = Path(__file__).resolve().parent / "sql"
-
-
-def _sql(name):
-    return (SQL_DIR / name).read_text()
 
 
 class Migration(migrations.Migration):
+    # Sample-data seeding moved out of migrations to the `seed_demo` management
+    # command (dev-only), so a fresh prod DB gets schema only. Kept as a no-op —
+    # not deleted — so the recorded migration history stays identical across
+    # environments. See transactions/management/commands/seed_demo.py.
     dependencies = [("wallets", "0001_initial")]
 
-    operations = [
-        migrations.RunSQL(
-            _sql("seed_wallets.sql"),
-            reverse_sql=(
-                "DELETE FROM wallets_account; "
-                "DELETE FROM wallets_purpose;"
-            ),
-        ),
-    ]
+    operations = []
