@@ -1,24 +1,10 @@
-from pathlib import Path
-
 from django.db import migrations
-
-SQL_DIR = Path(__file__).resolve().parent / "sql"
-
-
-def _sql(name):
-    return (SQL_DIR / name).read_text()
 
 
 class Migration(migrations.Migration):
+    # Sample-data seeding moved to the `seed_demo` management command (dev-only).
+    # Kept as a no-op so recorded migration history stays consistent. See
+    # transactions/management/commands/seed_demo.py.
     dependencies = [("transactions", "0004_add_transaction_accounts")]
 
-    operations = [
-        migrations.RunSQL(
-            _sql("seed_transfers.sql"),
-            reverse_sql=(
-                "DELETE FROM transactions_transaction "
-                "WHERE source_account_id IS NOT NULL "
-                "AND destination_account_id IS NOT NULL;"
-            ),
-        ),
-    ]
+    operations = []
