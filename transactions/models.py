@@ -75,11 +75,11 @@ class Transaction(models.Model):
                 name="tx_amount_positive",
                 condition=Q(amount__gt=0),
             ),
-            # subcategory is set iff the transaction is NOT a transfer (a transfer
-            # is the only shape with both account legs set).
+            # income/expense transactions must be categorized; transfers may
+            # optionally carry a subcategory (e.g. a mortgage payment or a move
+            # to a deposit/technical obligations account).
             models.CheckConstraint(
-                name="tx_subcategory_iff_not_transfer",
-                condition=(_TRANSFER & Q(subcategory__isnull=True))
-                | (~_TRANSFER & Q(subcategory__isnull=False)),
+                name="tx_subcategory_required_for_non_transfer",
+                condition=_TRANSFER | Q(subcategory__isnull=False),
             ),
         ]

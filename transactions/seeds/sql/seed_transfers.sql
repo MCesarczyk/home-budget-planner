@@ -1,6 +1,7 @@
 -- Seed data: transfer transactions (money moved between the user's own accounts).
--- Transfers have BOTH account legs set and NO subcategory (per the
--- tx_subcategory_iff_not_transfer constraint). Depends on the wallets accounts
+-- Transfers have BOTH account legs set; a subcategory is optional for them (per
+-- the tx_subcategory_required_for_non_transfer constraint). These seed rows leave
+-- it NULL. Depends on the wallets accounts
 -- (seed_wallets.sql) and the transaction account legs (0004) existing first.
 -- Resolves account ids by name (account names are unique).
 
