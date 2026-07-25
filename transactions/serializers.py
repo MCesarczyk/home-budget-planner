@@ -45,6 +45,7 @@ class TransactionReadSerializer(serializers.ModelSerializer):
             "type",
             "tx_date",
             "amount",
+            "comment",
             "source_account",
             "destination_account",
             "subcategory",
@@ -66,6 +67,7 @@ class TransactionWriteSerializer(serializers.ModelSerializer):
             "id",
             "tx_date",
             "amount",
+            "comment",
             "source_account",
             "destination_account",
             "subcategory",
@@ -106,10 +108,6 @@ class TransactionWriteSerializer(serializers.ModelSerializer):
 
         is_transfer = source is not None and destination is not None
         if is_transfer:
-            if subcategory is not None:
-                raise serializers.ValidationError(
-                    "A transfer (both account legs set) must not have a subcategory."
-                )
             return attrs
 
         # Income (destination only) or expense (source only): subcategory required

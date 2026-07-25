@@ -59,6 +59,10 @@ class Transaction(models.Model):
     )
     tx_date = models.DateField()
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    # `default` covers ORM inserts (the in-memory instance gets "" when omitted);
+    # `db_default` gives the column a real DB-level default so the raw-SQL seed
+    # inserts, which omit this column, don't hit NOT NULL.
+    comment = models.CharField(max_length=255, blank=True, default="", db_default="")
 
     class Meta:
         constraints = [
