@@ -187,3 +187,13 @@ INSERT INTO transactions_transaction (subcategory_id, source_account_id, tx_date
     ((SELECT id FROM transactions_subcategory WHERE name = 'Mobile Plan'), 1, '2023-07-05', 12.00),
     ((SELECT id FROM transactions_subcategory WHERE name = 'Building Maintenance Fee'), 1, '2023-07-05', 25.00),
     ((SELECT id FROM transactions_subcategory WHERE name = 'Supermarket'), 1, '2023-07-03', 49.00);
+
+UPDATE transactions_transaction SET comment = 'Locksmith — cut two spare house keys'
+ WHERE tx_date = '2023-10-04' AND amount = 34.00
+   AND subcategory_id = (SELECT id FROM transactions_subcategory WHERE name = 'Other');
+UPDATE transactions_transaction SET comment = 'Monthly donation to the local food bank'
+ WHERE tx_date = '2023-09-17' AND amount = 12.00
+   AND subcategory_id = (SELECT id FROM transactions_subcategory WHERE name = 'Charity Donation');
+UPDATE transactions_transaction SET comment = 'Q3 performance bonus'
+ WHERE tx_date = '2023-08-02' AND amount = 205.00
+   AND subcategory_id = (SELECT id FROM transactions_subcategory WHERE name = 'Bonus');

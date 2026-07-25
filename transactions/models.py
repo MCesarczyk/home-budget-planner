@@ -59,6 +59,7 @@ class Transaction(models.Model):
     )
     tx_date = models.DateField()
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    comment = models.CharField(max_length=255, blank=True, db_default="")
 
     class Meta:
         constraints = [
