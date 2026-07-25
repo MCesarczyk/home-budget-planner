@@ -15,7 +15,10 @@ INSERT INTO wallets_account
     (3, 'Home Repair Fund',      'savings',    4200.00, 2,    TRUE),
     (4, 'Retirement Term Deposit','savings',  30000.00, 3,    TRUE),
     (5, 'Brokerage Account',     'investment',12000.00, 3,    TRUE),
-    (6, 'Vacation Pot',          'savings',    1500.00, 4,    TRUE);
+    (6, 'Vacation Pot',          'savings',    1500.00, 4,    TRUE),
+    -- Inactive account: a term deposit that has been closed. Retains a residual
+    -- balance but is excluded from the net-worth report (is_active = FALSE).
+    (7, 'Closed Deposit',        'savings',    5000.00, NULL, FALSE);
 
 -- Note: booleans use TRUE (portable — SQLite accepts it, PostgreSQL requires it).
 -- On PostgreSQL the id sequences are re-pointed past these explicit ids by
