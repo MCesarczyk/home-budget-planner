@@ -69,7 +69,7 @@ class NetWorthView(APIView):
     def get(self, request):
         balances = account_balances()
         assets, liabilities = [], []
-        for a in Account.objects.all().order_by("name"):
+        for a in Account.objects.filter(is_active=True).order_by("name"):
             row = {"id": a.id, "name": a.name, "type": a.type, "balance": balances.get(a.id, ZERO)}
             (liabilities if a.is_liability else assets).append(row)
 
