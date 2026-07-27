@@ -1,34 +1,26 @@
-# Production: the Django app only. The database is EXTERNAL (managed/production
-# Postgres) — there is no `db` service here. All secrets and connection details
-# come from .env.prod (see .env.prod.example); nothing is hardcoded.
-#
-#   cp .env.prod.example .env.prod   # then fill it in
-#   docker compose -f docker-compose.prod.yml up -d --build
 services:
   web:
     build: .
     restart: unless-stopped
-    # SECRET_KEY, DEBUG=False, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS, POSTGRES_*
-    # (pointing at the external DB), and DJANGO_SUPERUSER_* all live here.
     env_file:
       - .env.prod
-    # Production WSGI server (not runserver). gunicorn listens on the CONTAINER
-    # port 8000 — keep this 8000 and control the public port via `ports` below.
-    # Entrypoint runs migrate + collectstatic + superuser bootstrap before this.
     command: >
       gunicorn config.wsgi:application
       --bind 0.0.0.0:8000
       --workers 3
       --timeout 60
       --access-logfile -
-    # "HOST:CONTAINER" — the RIGHT side must be 8000 (gunicorn's port); the LEFT
-    # side is the VM port that your host/proxy forwards public traffic to. This
-    # mirrors the dev compose (which used 8088:8000 and is reachable at
-    # srv28.mikr.us:30391 — i.e. mikr.us forwards public 30391 -> VM 8088). If your
-    # dev used a different host port, use that same number here.
-    #
-    # With a same-host TLS reverse proxy instead, use "127.0.0.1:8000:8000" and
-    # point the proxy at 127.0.0.1:8000.
     ports:
       - "${WEB_PORT:-8000}:8000"
 
+  frontend:
+    build:
+      context: ./frontend
+      target: runner
+    restart: unless-stopped
+    environment:
+      API_PROXY_TARGET: http://web:8000
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - web
