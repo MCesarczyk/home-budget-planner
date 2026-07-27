@@ -1,4 +1,3 @@
-# Demo setup: Django app + PostgreSQL, each in its own container.
 services:
   db:
     image: postgres:17
@@ -27,15 +26,24 @@ services:
       POSTGRES_PASSWORD: hbp
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-      # Demo superuser auto-created on startup (see docker-entrypoint.sh).
-      # Read by `createsuperuser --noinput`. Change these for anything real.
+      ALLOWED_HOSTS: web,localhost,127.0.0.1
       DJANGO_SUPERUSER_USERNAME: admin
       DJANGO_SUPERUSER_EMAIL: admin@example.com
       DJANGO_SUPERUSER_PASSWORD: admin
     depends_on:
       db:
-        # Don't start until Postgres reports healthy, so migrate can connect.
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "5173:5173"
+    environment:
+      API_PROXY_TARGET: http://web:8000
+    depends_on:
+      - web
 
 volumes:
   pgdata:
