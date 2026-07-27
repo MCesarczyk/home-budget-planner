@@ -30,11 +30,14 @@ class AuthState {
 	}
 
 	async logout(): Promise<void> {
+		// Logging out must always clear the local session, even if the network
+		// call fails — otherwise the UI is stuck "signed in" with no recourse.
 		try {
 			await apiLogout();
-		} finally {
-			this.user = null;
+		} catch {
+			// ignore — clearing local state below is what matters
 		}
+		this.user = null;
 	}
 }
 
