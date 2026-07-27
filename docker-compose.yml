@@ -6,10 +6,8 @@ services:
       POSTGRES_USER: hbp
       POSTGRES_PASSWORD: hbp
     volumes:
-      # Postgres data persists across `docker compose down` (drop with `-v`).
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      # web waits for this before running migrations (see depends_on below).
       test: ["CMD-SHELL", "pg_isready -U hbp -d hbp"]
       interval: 5s
       timeout: 5s
@@ -20,7 +18,6 @@ services:
     ports:
       - "8088:8000"
     environment:
-      # DB connection — presence of POSTGRES_DB switches settings.py to Postgres.
       POSTGRES_DB: hbp
       POSTGRES_USER: hbp
       POSTGRES_PASSWORD: hbp
