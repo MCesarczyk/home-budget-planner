@@ -36,17 +36,15 @@
 		</div>
 		<ul class="divide-y divide-slate-100 dark:divide-slate-800">
 			{#each items as account (account.id)}
-				<li class="flex items-center justify-between px-4 py-2.5 text-sm">
+				<li class="flex items-center justify-between px-4 py-2 text-xs">
 					<span class="text-slate-700 dark:text-slate-300">
 						{account.name}
-						<span class="ml-1 text-xs text-slate-400 dark:text-slate-500"
-							>{typeLabel(account.type)}</span
-						>
+						<span class="ml-1 text-slate-400 dark:text-slate-500">{typeLabel(account.type)}</span>
 					</span>
 					<span class="font-medium {amountClass(account.balance)}">{account.balance}</span>
 				</li>
 			{:else}
-				<li class="px-4 py-2.5 text-sm text-slate-400 dark:text-slate-500">None</li>
+				<li class="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">None</li>
 			{/each}
 		</ul>
 	</div>

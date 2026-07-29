@@ -37,8 +37,8 @@
 	{:else}
 		<ul class="divide-y divide-slate-100 dark:divide-slate-800">
 			{#each report.purposes as purpose (purpose.id)}
-				<li class="px-4 py-3">
-					<div class="flex items-baseline justify-between text-sm">
+				<li class="px-4 py-2.5">
+					<div class="flex items-baseline justify-between text-xs">
 						<span class="font-medium text-slate-800 dark:text-slate-200">{purpose.name}</span>
 						<span class="text-slate-600 dark:text-slate-300">
 							{purpose.current_amount}
