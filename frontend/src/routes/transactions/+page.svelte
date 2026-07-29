@@ -4,11 +4,21 @@
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import { ApiError } from '$lib/api/client';
 	import { fetchTransactions, PAGE_SIZE, type TransactionFilters } from '$lib/transactions/api';
-	import { currentMonth, monthRange, shiftMonth } from '$lib/transactions/month';
+	import {
+		currentMonth,
+		currentYear,
+		monthRange,
+		shiftMonth,
+		shiftYear,
+		yearRange
+	} from '$lib/transactions/helpers';
 	import type { Transaction } from '$lib/transactions/types';
 
-	let mode = $state<'all' | 'month'>('month');
+	type Mode = 'all' | 'month' | 'year';
+
+	let mode = $state<Mode>('month');
 	let month = $state(currentMonth());
+	let year = $state(currentYear());
 	let pageNum = $state(1);
 	let transactions = $state<Transaction[]>([]);
 	let count = $state(0);
@@ -22,9 +32,13 @@
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
 	});
 
+	let filters = $derived<TransactionFilters>(
+		mode === 'month' ? monthRange(month) : mode === 'year' ? yearRange(year) : {}
+	);
+
 	$effect(() => {
 		if (!auth.isAuthenticated) return;
-		load(mode === 'month' ? monthRange(month) : {}, pageNum);
+		load(filters, pageNum);
 	});
 
 	async function load(filters: TransactionFilters, page: number) {
@@ -45,12 +59,16 @@
 	}
 
 	// Filter changes reset paging; page steps stay within bounds.
-	function setMode(next: 'all' | 'month') {
+	function setMode(next: Mode) {
 		mode = next;
 		pageNum = 1;
 	}
 	function setMonth(next: string) {
 		month = next;
+		pageNum = 1;
+	}
+	function setYear(next: string) {
+		year = next;
 		pageNum = 1;
 	}
 	function prevPage() {
@@ -118,6 +136,13 @@
 				>
 					Month
 				</button>
+				<button
+					type="button"
+					onclick={() => setMode('year')}
+					class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'year')}"
+				>
+					Year
+				</button>
 			</div>
 
 			{#if mode === 'month'}
@@ -146,6 +171,32 @@
 						›
 					</button>
 				</div>
+			{:else if mode === 'year'}
+				<div class="inline-flex items-center gap-1">
+					<button
+						type="button"
+						aria-label="Previous year"
+						onclick={() => setYear(shiftYear(year, -1))}
+						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+					>
+						‹
+					</button>
+					<input
+						type="number"
+						aria-label="Year"
+						value={year}
+						onchange={(e) => setYear(e.currentTarget.value)}
+						class="w-20 rounded-md border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+					/>
+					<button
+						type="button"
+						aria-label="Next year"
+						onclick={() => setYear(shiftYear(year, 1))}
+						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+					>
+						›
+					</button>
+				</div>
 			{/if}
 		</div>
 
@@ -158,7 +209,11 @@
 				<p class="p-8 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
 			{:else if transactions.length === 0}
 				<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-					{mode === 'month' ? 'No transactions this month.' : 'No transactions yet.'}
+					{mode === 'month'
+						? 'No transactions this month.'
+						: mode === 'year'
+							? 'No transactions this year.'
+							: 'No transactions yet.'}
 				</p>
 			{:else}
 				<div class="max-h-[calc(100vh-13rem)] scrollbar-thin overflow-y-auto">

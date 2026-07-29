@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { currentMonth, monthRange, shiftMonth } from './month';
+import { currentMonth, currentYear, monthRange, shiftMonth, shiftYear, yearRange } from './helpers';
 
-describe('month helpers', () => {
+describe('date filtering helpers', () => {
 	it('currentMonth formats a date as YYYY-MM', () => {
 		expect(currentMonth(new Date(2026, 6, 15))).toBe('2026-07');
 	});
@@ -14,5 +14,20 @@ describe('month helpers', () => {
 	it('shiftMonth steps across year boundaries', () => {
 		expect(shiftMonth('2026-12', 1)).toBe('2027-01');
 		expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+	});
+});
+
+describe('year helpers', () => {
+	it('currentYear formats a date as YYYY', () => {
+		expect(currentYear(new Date(2026, 6, 15))).toBe('2026');
+	});
+
+	it('yearRange spans the whole calendar year', () => {
+		expect(yearRange('2026')).toEqual({ dateFrom: '2026-01-01', dateTo: '2026-12-31' });
+	});
+
+	it('shiftYear steps by whole years', () => {
+		expect(shiftYear('2026', 1)).toBe('2027');
+		expect(shiftYear('2026', -1)).toBe('2025');
 	});
 });

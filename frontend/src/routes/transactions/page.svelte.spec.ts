@@ -4,7 +4,13 @@ import { page } from 'vitest/browser';
 import { ApiError } from '$lib/api/client';
 import { auth } from '$lib/auth/auth.store.svelte';
 import type { Paginated, Transaction } from '$lib/transactions/types';
-import { currentMonth, monthRange, shiftMonth } from '$lib/transactions/month';
+import {
+	currentMonth,
+	currentYear,
+	monthRange,
+	shiftMonth,
+	yearRange
+} from '$lib/transactions/helpers';
 import * as api from '$lib/transactions/api';
 import Page from './+page.svelte';
 
@@ -96,6 +102,19 @@ describe('transactions page', () => {
 
 		await expect.element(page.getByText('No transactions yet.')).toBeInTheDocument();
 		await vi.waitFor(() => expect(fetchTransactions).toHaveBeenLastCalledWith({}, 1));
+	});
+
+	it('filters by the whole calendar year when Year is chosen', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		await page.getByRole('button', { name: 'Year' }).click();
+
+		await expect.element(page.getByText('No transactions this year.')).toBeInTheDocument();
+		await vi.waitFor(() =>
+			expect(fetchTransactions).toHaveBeenLastCalledWith(yearRange(currentYear()), 1)
+		);
 	});
 
 	it('reloads with the previous month when stepping back', async () => {

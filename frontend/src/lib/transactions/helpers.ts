@@ -21,3 +21,15 @@ export function shiftMonth(ym: string, delta: number): string {
 	const d = new Date(year, month - 1 + delta, 1);
 	return toKey(d.getFullYear(), d.getMonth());
 }
+
+export function currentYear(now: Date = new Date()): string {
+	return String(now.getFullYear());
+}
+
+export function yearRange(year: string): { dateFrom: string; dateTo: string } {
+	return { dateFrom: `${year}-01-01`, dateTo: `${year}-12-31` };
+}
+
+export function shiftYear(year: string, delta: number): string {
+	return String(Number(year) + delta);
+}
