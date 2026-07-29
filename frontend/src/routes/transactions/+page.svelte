@@ -64,7 +64,7 @@
 
 <svelte:head><title>Transactions</title></svelte:head>
 
-<main class="min-h-screen bg-slate-50 p-4 dark:bg-slate-950">
+<main class="min-h-[calc(100vh-3.5rem)] bg-slate-50 p-4 dark:bg-slate-950">
 	<div class="mx-auto max-w-4xl">
 		<h1 class="mb-4 text-xl font-semibold text-slate-900 dark:text-slate-100">Transactions</h1>
 
@@ -80,47 +80,53 @@
 					No transactions yet.
 				</p>
 			{:else}
-				<table class="w-full text-left text-sm">
-					<thead
-						class="border-b border-slate-200 text-xs tracking-wide text-slate-500 uppercase dark:border-slate-800 dark:text-slate-400"
-					>
-						<tr>
-							<th class="px-4 py-3 font-medium">Date</th>
-							<th class="px-4 py-3 font-medium">Type</th>
-							<th class="px-4 py-3 font-medium">Category</th>
-							<th class="px-4 py-3 font-medium">Account</th>
-							<th class="px-4 py-3 text-right font-medium">Amount</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-						{#each transactions as tx (tx.id)}
-							<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-								<td class="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300"
-									>{tx.tx_date}</td
-								>
-								<td class="px-4 py-3">
-									<span class="rounded-full px-2 py-0.5 text-xs font-medium {badgeClass[tx.type]}">
-										{tx.type}
-									</span>
-								</td>
-								<td class="px-4 py-3 text-slate-700 dark:text-slate-300">
-									{categoryLabel(tx)}
-									{#if tx.comment}
-										<span class="block text-xs text-slate-400 dark:text-slate-500"
-											>{tx.comment}</span
-										>
-									{/if}
-								</td>
-								<td class="px-4 py-3 text-slate-600 dark:text-slate-300">{accountsLabel(tx)}</td>
-								<td
-									class="px-4 py-3 text-right font-medium whitespace-nowrap {amountClass(tx.type)}"
-								>
-									{signedAmount(tx)}
-								</td>
+				<div class="max-h-[calc(100vh-9rem)] scrollbar-thin overflow-y-auto">
+					<table class="w-full text-left text-sm">
+						<thead
+							class="sticky top-0 border-b border-slate-200 bg-white text-xs tracking-wide text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+						>
+							<tr>
+								<th class="px-4 py-3 font-medium">Date</th>
+								<th class="px-4 py-3 font-medium">Type</th>
+								<th class="px-4 py-3 font-medium">Category</th>
+								<th class="px-4 py-3 font-medium">Account</th>
+								<th class="px-4 py-3 text-right font-medium">Amount</th>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
+						</thead>
+						<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+							{#each transactions as tx (tx.id)}
+								<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+									<td class="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300"
+										>{tx.tx_date}</td
+									>
+									<td class="px-4 py-3">
+										<span
+											class="rounded-full px-2 py-0.5 text-xs font-medium {badgeClass[tx.type]}"
+										>
+											{tx.type}
+										</span>
+									</td>
+									<td class="px-4 py-3 text-slate-700 dark:text-slate-300">
+										{categoryLabel(tx)}
+										{#if tx.comment}
+											<span class="block text-xs text-slate-400 dark:text-slate-500"
+												>{tx.comment}</span
+											>
+										{/if}
+									</td>
+									<td class="px-4 py-3 text-slate-600 dark:text-slate-300">{accountsLabel(tx)}</td>
+									<td
+										class="px-4 py-3 text-right font-medium whitespace-nowrap {amountClass(
+											tx.type
+										)}"
+									>
+										{signedAmount(tx)}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
 			{/if}
 		</div>
 	</div>
