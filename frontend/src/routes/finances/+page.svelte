@@ -25,6 +25,15 @@
 	let cfLoading = $state(true);
 	let cfError = $state('');
 
+	// Which purpose each account is earmarked for, so net worth can flag them.
+	let purposeByAccount = $derived.by(() => {
+		const map: Record<number, string> = {};
+		for (const purpose of purposes?.purposes ?? []) {
+			for (const account of purpose.accounts) map[account.id] = purpose.name;
+		}
+		return map;
+	});
+
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
 	});
@@ -78,7 +87,7 @@
 <main class="min-h-[calc(100vh-3.5rem)] bg-slate-50 p-4 dark:bg-slate-950">
 	<div class="mx-auto max-w-2xl">
 		<div class="space-y-4">
-			<NetWorthSummary report={netWorth} loading={nwLoading} error={nwError} />
+			<NetWorthSummary report={netWorth} loading={nwLoading} error={nwError} {purposeByAccount} />
 			<CashflowChart report={cashflow} loading={cfLoading} error={cfError} />
 			<PurposesSummary report={purposes} loading={pLoading} error={pError} />
 		</div>

@@ -37,7 +37,7 @@ const purposes: PurposesReport = {
 			target_amount: '10000.00',
 			current_amount: '6500.00',
 			progress: 0.65,
-			accounts: [{ id: 1, name: 'Savings', balance: '6500.00' }]
+			accounts: [{ id: 2, name: 'Savings', balance: '6500.00' }]
 		}
 	]
 };

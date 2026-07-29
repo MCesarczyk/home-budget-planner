@@ -4,11 +4,13 @@
 	let {
 		report,
 		loading,
-		error
+		error,
+		purposeByAccount = {}
 	}: {
 		report: NetWorthReport | null;
 		loading: boolean;
 		error: string;
+		purposeByAccount?: Record<number, string>;
 	} = $props();
 
 	function typeLabel(t: string): string {
@@ -21,32 +23,82 @@
 			: 'text-slate-900 dark:text-slate-100';
 	}
 
+	function sumBalances(accounts: AccountBalance[]): string {
+		return accounts.reduce((s, a) => s + Number(a.balance), 0).toFixed(2);
+	}
+
 	let isEmpty = $derived(
 		!report || (report.assets.length === 0 && report.liabilities.length === 0)
 	);
+
+	// Dimmed, low-chroma tints cycled per purpose subgroup so they read apart.
+	// Full literal strings so Tailwind keeps them.
+	const GROUP_TINTS = [
+		'bg-sky-50 dark:bg-sky-950/30',
+		'bg-amber-50 dark:bg-amber-950/30',
+		'bg-violet-50 dark:bg-violet-950/30',
+		'bg-emerald-50 dark:bg-emerald-950/30',
+		'bg-rose-50 dark:bg-rose-950/30',
+		'bg-teal-50 dark:bg-teal-950/30'
+	];
+
+	// Assets split into the ungrouped accounts plus one subgroup per purpose.
+	interface AssetSection {
+		purpose: string | null;
+		accounts: AccountBalance[];
+		subtotal: string;
+		tint: string;
+	}
+	let assetSections = $derived.by(() => {
+		const ungrouped: AccountBalance[] = [];
+		const groups: Record<string, AccountBalance[]> = {};
+		for (const account of report?.assets ?? []) {
+			const purpose = purposeByAccount[account.id];
+			if (purpose) {
+				(groups[purpose] ??= []).push(account);
+			} else {
+				ungrouped.push(account);
+			}
+		}
+		const sections: AssetSection[] = [];
+		if (ungrouped.length) {
+			sections.push({
+				purpose: null,
+				accounts: ungrouped,
+				subtotal: sumBalances(ungrouped),
+				tint: ''
+			});
+		}
+		Object.keys(groups)
+			.sort((a, b) => a.localeCompare(b))
+			.forEach((purpose, i) => {
+				sections.push({
+					purpose,
+					accounts: groups[purpose],
+					subtotal: sumBalances(groups[purpose]),
+					tint: GROUP_TINTS[i % GROUP_TINTS.length]
+				});
+			});
+		return sections;
+	});
 </script>
 
-{#snippet group(title: string, items: AccountBalance[], total: string)}
-	<div>
-		<div class="flex items-baseline justify-between px-4 py-2">
-			<h3 class="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
-				{title}
-			</h3>
-			<span class="text-sm font-semibold {amountClass(total)}">{total}</span>
-		</div>
-		<ul class="divide-y divide-slate-100 dark:divide-slate-800">
-			{#each items as account (account.id)}
-				<li class="flex items-center justify-between px-4 py-2 text-xs">
-					<span class="text-slate-700 dark:text-slate-300">
-						{account.name}
-						<span class="ml-1 text-slate-400 dark:text-slate-500">{typeLabel(account.type)}</span>
-					</span>
-					<span class="font-medium {amountClass(account.balance)}">{account.balance}</span>
-				</li>
-			{:else}
-				<li class="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">None</li>
-			{/each}
-		</ul>
+{#snippet accountRow(account: AccountBalance)}
+	<li class="flex items-center justify-between px-4 py-2 text-[10px]">
+		<span class="text-slate-700 dark:text-slate-300">
+			{account.name}
+			<span class="ml-1 text-slate-400 dark:text-slate-500">{typeLabel(account.type)}</span>
+		</span>
+		<span class="font-medium {amountClass(account.balance)}">{account.balance}</span>
+	</li>
+{/snippet}
+
+{#snippet groupHeader(title: string, total: string)}
+	<div class="flex items-baseline justify-between px-4 py-2">
+		<h3 class="text-sm font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+			{title}
+		</h3>
+		<span class="text-sm font-semibold {amountClass(total)}">{total}</span>
 	</div>
 {/snippet}
 
@@ -67,8 +119,53 @@
 			<span class="text-2xl font-bold {amountClass(report.net_worth)}">{report.net_worth}</span>
 		</div>
 
-		{@render group('Assets', report.assets, report.total_assets)}
+		<div>
+			{@render groupHeader('Assets', report.total_assets)}
+			{#if report.assets.length === 0}
+				<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+					<li class="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">None</li>
+				</ul>
+			{:else}
+				{#each assetSections as section (section.purpose ?? '__ungrouped')}
+					{#if section.purpose}
+						<div class="pl-4 overflow-hidden rounded-md {section.tint}">
+							<div class="flex items-baseline justify-between py-1.5 pr-4 pl-2">
+								<span
+									class="text-[11px] font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400"
+									>{section.purpose}</span
+								>
+								<span class="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+									>{section.subtotal}</span
+								>
+							</div>
+							<ul class="divide-y divide-slate-100 dark:divide-slate-800/60">
+								{#each section.accounts as account (account.id)}
+									{@render accountRow(account)}
+								{/each}
+							</ul>
+						</div>
+					{:else}
+						<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+							{#each section.accounts as account (account.id)}
+								{@render accountRow(account)}
+							{/each}
+						</ul>
+					{/if}
+				{/each}
+			{/if}
+		</div>
+
 		<div class="border-t border-slate-200 dark:border-slate-800"></div>
-		{@render group('Liabilities', report.liabilities, report.total_liabilities)}
+
+		<div>
+			{@render groupHeader('Liabilities', report.total_liabilities)}
+			<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+				{#each report.liabilities as account (account.id)}
+					{@render accountRow(account)}
+				{:else}
+					<li class="px-4 py-2 text-xs text-slate-400 dark:text-slate-500">None</li>
+				{/each}
+			</ul>
+		</div>
 	{/if}
 </div>

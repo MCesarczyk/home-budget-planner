@@ -47,4 +47,17 @@ describe('NetWorthSummary', () => {
 		render(NetWorthSummary, { report: null, loading: false, error: 'Failed to load net worth.' });
 		await expect.element(page.getByText('Failed to load net worth.')).toBeInTheDocument();
 	});
+
+	it('groups earmarked assets under a purpose subheading', async () => {
+		render(NetWorthSummary, {
+			report,
+			loading: false,
+			error: '',
+			purposeByAccount: { 2: 'Retirement' }
+		});
+
+		// The purpose name appears as a subgroup heading, with its account beneath it.
+		await expect.element(page.getByText('Retirement')).toBeInTheDocument();
+		await expect.element(page.getByText('Brokerage')).toBeInTheDocument();
+	});
 });
