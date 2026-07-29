@@ -22,6 +22,7 @@
 	} from '$lib/transactions/helpers';
 	import type { Category, SpendingReport, Subcategory, Transaction } from '$lib/transactions/types';
 	import SpendingSummary from '$lib/transactions/SpendingSummary.svelte';
+	import NewTransactionModal from '$lib/transactions/NewTransactionModal.svelte';
 
 	type Mode = 'all' | 'month' | 'year';
 
@@ -42,6 +43,8 @@
 	let spending = $state<SpendingReport | null>(null);
 	let spendingLoading = $state(true);
 	let spendingError = $state('');
+
+	let showNew = $state(false);
 
 	let reqId = 0;
 	let spendingReqId = 0;
@@ -147,6 +150,10 @@
 	}
 	function onSubcategoryChange() {
 		pageNum = 1;
+	}
+	function onCreated() {
+		load(filters, pageNum);
+		loadSpending(dateRange);
 	}
 	function prevPage() {
 		if (pageNum > 1) pageNum -= 1;
@@ -302,6 +309,14 @@
 						<option value={String(subcategory.id)}>{subcategory.name}</option>
 					{/each}
 				</select>
+
+				<button
+					type="button"
+					onclick={() => (showNew = true)}
+					class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+				>
+					New transaction
+				</button>
 			</div>
 		</div>
 
@@ -415,4 +430,6 @@
 			</aside>
 		</div>
 	</div>
+
+	<NewTransactionModal open={showNew} onclose={() => (showNew = false)} oncreated={onCreated} />
 </main>

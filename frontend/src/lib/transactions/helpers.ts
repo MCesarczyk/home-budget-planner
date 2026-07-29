@@ -10,6 +10,10 @@ export function currentMonth(now: Date = new Date()): string {
 	return toKey(now.getFullYear(), now.getMonth());
 }
 
+export function today(now: Date = new Date()): string {
+	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 export function monthRange(ym: string): { dateFrom: string; dateTo: string } {
 	const [year, month] = ym.split('-').map(Number);
 	const lastDay = new Date(year, month, 0).getDate();

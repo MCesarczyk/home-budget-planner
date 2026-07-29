@@ -1,7 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as client from '../api/client';
-import { fetchCategories, fetchSpending, fetchSubcategories, fetchTransactions } from './api';
-import type { Category, Paginated, SpendingReport, Subcategory, Transaction } from './types';
+import {
+	createTransaction,
+	fetchAccounts,
+	fetchCategories,
+	fetchSpending,
+	fetchSubcategories,
+	fetchTransactions
+} from './api';
+import type {
+	Account,
+	Category,
+	Paginated,
+	SpendingReport,
+	Subcategory,
+	Transaction
+} from './types';
 
 vi.mock('../api/client', () => ({ apiJson: vi.fn() }));
 
@@ -108,5 +122,32 @@ describe('fetchSpending', () => {
 		apiJson.mockResolvedValueOnce(report);
 		await fetchSpending();
 		expect(apiJson.mock.calls[0][0]).toBe('/reports/spending/');
+	});
+});
+
+describe('fetchAccounts', () => {
+	it('fetches accounts from the accounts endpoint', async () => {
+		const a: Account = { id: 1, name: 'Checking', is_active: true };
+		apiJson.mockResolvedValueOnce({ count: 1, next: null, previous: null, results: [a] });
+		await expect(fetchAccounts()).resolves.toEqual([a]);
+		expect(apiJson.mock.calls[0][0]).toBe('/accounts/');
+	});
+});
+
+describe('createTransaction', () => {
+	it('POSTs the payload to the transactions endpoint', async () => {
+		apiJson.mockResolvedValueOnce({} as Transaction);
+		const input = {
+			tx_date: '2026-07-01',
+			amount: '10.00',
+			comment: 'x',
+			source_account: 1,
+			subcategory: 2
+		};
+		await createTransaction(input);
+		const [path, opts] = apiJson.mock.calls[0];
+		expect(path).toBe('/transactions/');
+		expect((opts as RequestInit).method).toBe('POST');
+		expect(JSON.parse((opts as RequestInit).body as string)).toEqual(input);
 	});
 });

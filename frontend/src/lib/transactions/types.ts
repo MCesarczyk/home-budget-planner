@@ -25,6 +25,12 @@ export interface Subcategory {
 	category: number;
 }
 
+export interface Account {
+	id: number;
+	name: string;
+	is_active: boolean;
+}
+
 export interface Transaction {
 	id: number;
 	type: TransactionType;

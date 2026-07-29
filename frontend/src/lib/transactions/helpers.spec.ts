@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { currentMonth, currentYear, monthRange, shiftMonth, shiftYear, yearRange } from './helpers';
+import {
+	currentMonth,
+	currentYear,
+	monthRange,
+	shiftMonth,
+	shiftYear,
+	today,
+	yearRange
+} from './helpers';
 
 describe('date filtering helpers', () => {
 	it('currentMonth formats a date as YYYY-MM', () => {
 		expect(currentMonth(new Date(2026, 6, 15))).toBe('2026-07');
+	});
+
+	it('today formats a date as YYYY-MM-DD', () => {
+		expect(today(new Date(2026, 6, 5))).toBe('2026-07-05');
 	});
 
 	it('monthRange spans the first to the last day of the month', () => {

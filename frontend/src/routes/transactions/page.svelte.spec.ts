@@ -21,6 +21,8 @@ vi.mock('$lib/transactions/api', () => ({
 	fetchCategories: vi.fn(),
 	fetchSubcategories: vi.fn(),
 	fetchSpending: vi.fn(),
+	fetchAccounts: vi.fn(),
+	createTransaction: vi.fn(),
 	PAGE_SIZE: 50
 }));
 
@@ -28,6 +30,7 @@ const fetchTransactions = vi.mocked(api.fetchTransactions);
 const fetchCategories = vi.mocked(api.fetchCategories);
 const fetchSubcategories = vi.mocked(api.fetchSubcategories);
 const fetchSpending = vi.mocked(api.fetchSpending);
+const fetchAccounts = vi.mocked(api.fetchAccounts);
 
 const emptyReport = { date_from: null, date_to: null, total: '0.00', categories: [] };
 
@@ -80,6 +83,7 @@ beforeEach(() => {
 	fetchCategories.mockResolvedValue(categories);
 	fetchSubcategories.mockResolvedValue(subcategories);
 	fetchSpending.mockResolvedValue(emptyReport);
+	fetchAccounts.mockResolvedValue([]);
 	auth.user = { id: 1, username: 'ada', email: 'a@b.c', is_staff: false };
 	auth.loading = false;
 });
@@ -248,5 +252,15 @@ describe('transactions page', () => {
 		);
 
 		expect(fetchSpending.mock.calls.length).toBe(before);
+	});
+
+	it('opens the new-transaction modal from the toolbar button', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		await page.getByRole('button', { name: 'New transaction' }).click();
+
+		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInTheDocument();
 	});
 });

@@ -1,7 +1,23 @@
 import { apiJson } from '../api/client';
-import type { Category, Paginated, SpendingReport, Subcategory, Transaction } from './types';
+import type {
+	Account,
+	Category,
+	Paginated,
+	SpendingReport,
+	Subcategory,
+	Transaction
+} from './types';
 
 export const PAGE_SIZE = 50;
+
+export interface TransactionCreateInput {
+	tx_date: string;
+	amount: string;
+	comment: string;
+	source_account?: number;
+	destination_account?: number;
+	subcategory?: number;
+}
 
 export interface DateRange {
 	dateFrom?: string;
@@ -49,6 +65,17 @@ export function fetchCategories(): Promise<Category[]> {
 
 export function fetchSubcategories(): Promise<Subcategory[]> {
 	return fetchAll<Subcategory>('/subcategories/');
+}
+
+export function fetchAccounts(): Promise<Account[]> {
+	return fetchAll<Account>('/accounts/');
+}
+
+export function createTransaction(input: TransactionCreateInput): Promise<Transaction> {
+	return apiJson<Transaction>('/transactions/', {
+		method: 'POST',
+		body: JSON.stringify(input)
+	});
 }
 
 export function fetchSpending(range: DateRange = {}): Promise<SpendingReport> {
