@@ -22,6 +22,9 @@ describe('Nav', () => {
 		await expect
 			.element(page.getByRole('link', { name: 'Transactions' }))
 			.toHaveAttribute('href', '/transactions');
+		await expect
+			.element(page.getByRole('link', { name: 'Finances' }))
+			.toHaveAttribute('href', '/finances');
 	});
 
 	it('marks the link for the current route as current', async () => {

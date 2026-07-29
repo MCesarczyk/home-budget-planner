@@ -17,7 +17,7 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<div class="fixed top-2 right-2 z-50">
+<div class="absolute top-2 right-2 z-50">
 	<ThemeToggle />
 </div>
 {#if auth.isAuthenticated}
