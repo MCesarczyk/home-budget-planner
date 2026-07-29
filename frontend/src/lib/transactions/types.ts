@@ -1,0 +1,38 @@
+export type TransactionType = 'income' | 'expense' | 'transfer';
+
+export type CategoryKind = 'income' | 'expense';
+
+export interface AccountRef {
+	id: number;
+	name: string;
+}
+
+export interface Category {
+	id: number;
+	name: string;
+	kind: CategoryKind;
+}
+
+export interface SubcategoryNested {
+	id: number;
+	name: string;
+	category: Category;
+}
+
+export interface Transaction {
+	id: number;
+	type: TransactionType;
+	tx_date: string;
+	amount: string;
+	comment: string;
+	source_account: AccountRef | null;
+	destination_account: AccountRef | null;
+	subcategory: SubcategoryNested | null;
+}
+
+export interface Paginated<T> {
+	count: number;
+	next: string | null;
+	previous: string | null;
+	results: T[];
+}
