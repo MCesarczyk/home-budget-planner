@@ -3,17 +3,20 @@
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import { ApiError } from '$lib/api/client';
-	import { fetchTransactions, type TransactionFilters } from '$lib/transactions/api';
+	import { fetchTransactions, PAGE_SIZE, type TransactionFilters } from '$lib/transactions/api';
 	import { currentMonth, monthRange, shiftMonth } from '$lib/transactions/month';
 	import type { Transaction } from '$lib/transactions/types';
 
 	let mode = $state<'all' | 'month'>('month');
 	let month = $state(currentMonth());
+	let pageNum = $state(1);
 	let transactions = $state<Transaction[]>([]);
+	let count = $state(0);
 	let loading = $state(true);
 	let error = $state('');
 
 	let reqId = 0;
+	let totalPages = $derived(Math.max(1, Math.ceil(count / PAGE_SIZE)));
 
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
@@ -21,23 +24,40 @@
 
 	$effect(() => {
 		if (!auth.isAuthenticated) return;
-		load(mode === 'month' ? monthRange(month) : {});
+		load(mode === 'month' ? monthRange(month) : {}, pageNum);
 	});
 
-	async function load(filters: TransactionFilters) {
+	async function load(filters: TransactionFilters, page: number) {
 		const id = ++reqId;
 		loading = true;
 		error = '';
 		try {
-			const results = await fetchTransactions(filters);
+			const data = await fetchTransactions(filters, page);
 			if (id !== reqId) return;
-			transactions = results;
+			transactions = data.results;
+			count = data.count;
 		} catch (e) {
 			if (id !== reqId) return;
 			error = e instanceof ApiError ? e.message : 'Failed to load transactions.';
 		} finally {
 			if (id === reqId) loading = false;
 		}
+	}
+
+	// Filter changes reset paging; page steps stay within bounds.
+	function setMode(next: 'all' | 'month') {
+		mode = next;
+		pageNum = 1;
+	}
+	function setMonth(next: string) {
+		month = next;
+		pageNum = 1;
+	}
+	function prevPage() {
+		if (pageNum > 1) pageNum -= 1;
+	}
+	function nextPage() {
+		if (pageNum < totalPages) pageNum += 1;
 	}
 
 	const toggleClass = (active: boolean): string =>
@@ -86,14 +106,14 @@
 			<div class="inline-flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-700">
 				<button
 					type="button"
-					onclick={() => (mode = 'all')}
+					onclick={() => setMode('all')}
 					class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'all')}"
 				>
 					All
 				</button>
 				<button
 					type="button"
-					onclick={() => (mode = 'month')}
+					onclick={() => setMode('month')}
 					class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'month')}"
 				>
 					Month
@@ -105,7 +125,7 @@
 					<button
 						type="button"
 						aria-label="Previous month"
-						onclick={() => (month = shiftMonth(month, -1))}
+						onclick={() => setMonth(shiftMonth(month, -1))}
 						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
 					>
 						‹
@@ -113,13 +133,14 @@
 					<input
 						type="month"
 						aria-label="Month"
-						bind:value={month}
+						value={month}
+						onchange={(e) => setMonth(e.currentTarget.value)}
 						class="rounded-md border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
 					/>
 					<button
 						type="button"
 						aria-label="Next month"
-						onclick={() => (month = shiftMonth(month, 1))}
+						onclick={() => setMonth(shiftMonth(month, 1))}
 						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
 					>
 						›
@@ -140,7 +161,7 @@
 					{mode === 'month' ? 'No transactions this month.' : 'No transactions yet.'}
 				</p>
 			{:else}
-				<div class="max-h-[calc(100vh-9rem)] scrollbar-thin overflow-y-auto">
+				<div class="max-h-[calc(100vh-13rem)] scrollbar-thin overflow-y-auto">
 					<table class="w-full text-left text-sm">
 						<thead
 							class="sticky top-0 border-b border-slate-200 bg-white text-xs tracking-wide text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
@@ -189,5 +210,34 @@
 				</div>
 			{/if}
 		</div>
+
+		{#if !loading && !error && count > 0}
+			<div
+				class="mt-4 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400"
+			>
+				<span>{count} transaction{count === 1 ? '' : 's'}</span>
+				<div class="inline-flex items-center gap-3">
+					<button
+						type="button"
+						aria-label="Previous page"
+						onclick={prevPage}
+						disabled={pageNum <= 1}
+						class="rounded-md px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:ring-slate-700 dark:hover:bg-slate-800"
+					>
+						‹ Prev
+					</button>
+					<span>Page {pageNum} of {totalPages}</span>
+					<button
+						type="button"
+						aria-label="Next page"
+						onclick={nextPage}
+						disabled={pageNum >= totalPages}
+						class="rounded-md px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:ring-slate-700 dark:hover:bg-slate-800"
+					>
+						Next ›
+					</button>
+				</div>
+			</div>
+		{/if}
 	</div>
 </main>
