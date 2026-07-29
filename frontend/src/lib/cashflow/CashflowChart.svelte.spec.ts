@@ -20,15 +20,16 @@ describe('CashflowChart', () => {
 
 		await expect.element(page.getByText('Income', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText('Expense', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByText('Net', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText('9800.00')).toBeInTheDocument();
 		await expect.element(page.getByText('Jan 26', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText('Feb 26', { exact: true })).toBeInTheDocument();
 	});
 
-	it('draws a bar per income and expense value', async () => {
+	it('draws income, expense and net bars per month', async () => {
 		const { container } = render(CashflowChart, { report, loading: false, error: '' });
-		// 2 months × 2 bars (income + expense) = 4 rects, plus none for gridlines (those are lines)
-		expect(container.querySelectorAll('rect').length).toBe(4);
+		// 2 months × 3 bars (income + expense + net) = 6 rects
+		expect(container.querySelectorAll('rect').length).toBe(6);
 	});
 
 	it('renders the empty state when there are no months', async () => {

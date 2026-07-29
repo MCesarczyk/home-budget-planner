@@ -39,20 +39,25 @@
 	const PAD_B = 28;
 	const plotW = W - PAD_L - PAD_R;
 	const plotH = H - PAD_T - PAD_B;
-	const baseline = PAD_T + plotH;
 
 	let months = $derived(report?.months ?? []);
-	let maxVal = $derived(
-		Math.max(1, ...months.flatMap((m) => [Number(m.income), Number(m.expense)]))
+	// Signed domain: income/expense are always ≥ 0, but net can be negative.
+	let values = $derived(
+		months.flatMap((m) => [Number(m.income), Number(m.expense), Number(m.net)])
 	);
+	let maxV = $derived(Math.max(1, 0, ...values));
+	let minV = $derived(Math.min(0, ...values));
+	let range = $derived(maxV - minV);
+	let ppu = $derived(plotH / range);
+	let zeroY = $derived(PAD_T + maxV * ppu);
 	// Keep the x-axis readable when there are many months.
 	let labelStep = $derived(Math.ceil(months.length / 12));
 
-	function barTop(v: number): number {
-		return baseline - (v / maxVal) * plotH;
+	function segTop(v: number): number {
+		return v >= 0 ? zeroY - v * ppu : zeroY;
 	}
-	function barHeight(v: number): number {
-		return (v / maxVal) * plotH;
+	function segHeight(v: number): number {
+		return Math.abs(v) * ppu;
 	}
 </script>
 
@@ -76,7 +81,7 @@
 					></span
 				>
 				<span
-					>Net <span class="font-semibold text-slate-900 dark:text-slate-100"
+					>Net <span class="font-semibold text-indigo-600 dark:text-indigo-400"
 						>{report.totals.net}</span
 					></span
 				>
@@ -101,9 +106,17 @@
 				<span class="flex items-center gap-1">
 					<span class="inline-block h-2.5 w-2.5 rounded-sm bg-red-500"></span>Expense
 				</span>
+				<span class="flex items-center gap-1">
+					<span class="inline-block h-2.5 w-2.5 rounded-sm bg-indigo-500"></span>Net
+				</span>
 			</div>
 
-			<svg viewBox="0 0 {W} {H}" class="w-full" role="img" aria-label="Monthly income and expense">
+			<svg
+				viewBox="0 0 {W} {H}"
+				class="w-full"
+				role="img"
+				aria-label="Monthly income, expense and net"
+			>
 				<line
 					x1={PAD_L}
 					y1={PAD_T}
@@ -114,44 +127,65 @@
 				/>
 				<line
 					x1={PAD_L}
-					y1={baseline}
+					y1={zeroY}
 					x2={W - PAD_R}
-					y2={baseline}
+					y2={zeroY}
 					class="stroke-slate-300 dark:stroke-slate-700"
 					stroke-width="1"
 				/>
 				<text x={PAD_L - 6} y={PAD_T + 4} text-anchor="end" class="fill-slate-400 text-[10px]">
-					{Math.round(maxVal)}
+					{Math.round(maxV)}
 				</text>
-				<text x={PAD_L - 6} y={baseline + 4} text-anchor="end" class="fill-slate-400 text-[10px]"
+				<text x={PAD_L - 6} y={zeroY + 4} text-anchor="end" class="fill-slate-400 text-[10px]"
 					>0</text
 				>
+				{#if minV < 0}
+					<text
+						x={PAD_L - 6}
+						y={PAD_T + plotH + 4}
+						text-anchor="end"
+						class="fill-slate-400 text-[10px]">{Math.round(minV)}</text
+					>
+				{/if}
 
 				{#each months as m, i (m.month)}
 					{@const gw = plotW / months.length}
 					{@const cx = PAD_L + gw * (i + 0.5)}
-					{@const bw = Math.max(3, Math.min(14, gw / 2 - 3))}
+					{@const bw = Math.max(3, Math.min(10, gw / 3 - 2))}
+					{@const gap = 2}
+					{@const x0 = cx - (3 * bw + 2 * gap) / 2}
 					{@const income = Number(m.income)}
 					{@const expense = Number(m.expense)}
+					{@const net = Number(m.net)}
 					<rect
-						x={cx - bw - 1}
-						y={barTop(income)}
+						x={x0}
+						y={segTop(income)}
 						width={bw}
-						height={barHeight(income)}
+						height={segHeight(income)}
 						rx="2"
 						class="fill-emerald-500"
 					>
-						<title>{fmtMonth(m.month)} · income {m.income} · net {m.net}</title>
+						<title>{fmtMonth(m.month)} · income {m.income}</title>
 					</rect>
 					<rect
-						x={cx + 1}
-						y={barTop(expense)}
+						x={x0 + bw + gap}
+						y={segTop(expense)}
 						width={bw}
-						height={barHeight(expense)}
+						height={segHeight(expense)}
 						rx="2"
 						class="fill-red-500"
 					>
-						<title>{fmtMonth(m.month)} · expense {m.expense} · net {m.net}</title>
+						<title>{fmtMonth(m.month)} · expense {m.expense}</title>
+					</rect>
+					<rect
+						x={x0 + 2 * (bw + gap)}
+						y={segTop(net)}
+						width={bw}
+						height={segHeight(net)}
+						rx="2"
+						class="fill-indigo-500"
+					>
+						<title>{fmtMonth(m.month)} · net {m.net}</title>
 					</rect>
 					{#if i % labelStep === 0}
 						<text x={cx} y={H - 10} text-anchor="middle" class="fill-slate-400 text-[10px]">
