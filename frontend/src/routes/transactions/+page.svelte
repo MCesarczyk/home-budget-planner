@@ -22,7 +22,7 @@
 	} from '$lib/transactions/helpers';
 	import type { Category, SpendingReport, Subcategory, Transaction } from '$lib/transactions/types';
 	import SpendingSummary from '$lib/transactions/SpendingSummary.svelte';
-	import NewTransactionModal from '$lib/transactions/NewTransactionModal.svelte';
+	import TransactionModal from '$lib/transactions/TransactionModal.svelte';
 
 	type Mode = 'all' | 'month' | 'year';
 
@@ -44,7 +44,8 @@
 	let spendingLoading = $state(true);
 	let spendingError = $state('');
 
-	let showNew = $state(false);
+	let modalOpen = $state(false);
+	let editing = $state<Transaction | null>(null);
 
 	let reqId = 0;
 	let spendingReqId = 0;
@@ -151,9 +152,23 @@
 	function onSubcategoryChange() {
 		pageNum = 1;
 	}
-	function onCreated() {
+	function reload() {
 		load(filters, pageNum);
 		loadSpending(dateRange);
+	}
+	function openNew() {
+		editing = null;
+		modalOpen = true;
+	}
+	function openEdit(tx: Transaction) {
+		editing = tx;
+		modalOpen = true;
+	}
+	function onRowKey(e: KeyboardEvent, tx: Transaction) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			openEdit(tx);
+		}
 	}
 	function prevPage() {
 		if (pageNum > 1) pageNum -= 1;
@@ -312,7 +327,7 @@
 
 				<button
 					type="button"
-					onclick={() => (showNew = true)}
+					onclick={openNew}
 					class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
 				>
 					New transaction
@@ -353,7 +368,13 @@
 								</thead>
 								<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
 									{#each transactions as tx (tx.id)}
-										<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+										<tr
+											role="button"
+											tabindex="0"
+											onclick={() => openEdit(tx)}
+											onkeydown={(e) => onRowKey(e, tx)}
+											class="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+										>
 											<td class="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300"
 												>{tx.tx_date}</td
 											>
@@ -431,5 +452,10 @@
 		</div>
 	</div>
 
-	<NewTransactionModal open={showNew} onclose={() => (showNew = false)} oncreated={onCreated} />
+	<TransactionModal
+		open={modalOpen}
+		transaction={editing}
+		onclose={() => (modalOpen = false)}
+		onsaved={reload}
+	/>
 </main>

@@ -23,6 +23,8 @@ vi.mock('$lib/transactions/api', () => ({
 	fetchSpending: vi.fn(),
 	fetchAccounts: vi.fn(),
 	createTransaction: vi.fn(),
+	updateTransaction: vi.fn(),
+	deleteTransaction: vi.fn(),
 	PAGE_SIZE: 50
 }));
 

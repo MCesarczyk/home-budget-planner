@@ -14,9 +14,9 @@ export interface TransactionCreateInput {
 	tx_date: string;
 	amount: string;
 	comment: string;
-	source_account?: number;
-	destination_account?: number;
-	subcategory?: number;
+	source_account?: number | null;
+	destination_account?: number | null;
+	subcategory?: number | null;
 }
 
 export interface DateRange {
@@ -76,6 +76,17 @@ export function createTransaction(input: TransactionCreateInput): Promise<Transa
 		method: 'POST',
 		body: JSON.stringify(input)
 	});
+}
+
+export function updateTransaction(id: number, input: TransactionCreateInput): Promise<Transaction> {
+	return apiJson<Transaction>(`/transactions/${id}/`, {
+		method: 'PATCH',
+		body: JSON.stringify(input)
+	});
+}
+
+export function deleteTransaction(id: number): Promise<void> {
+	return apiJson<void>(`/transactions/${id}/`, { method: 'DELETE' });
 }
 
 export function fetchSpending(range: DateRange = {}): Promise<SpendingReport> {

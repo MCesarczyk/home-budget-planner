@@ -41,7 +41,8 @@ describe('TransactionForm', () => {
 			amount: '12.5',
 			comment: '',
 			subcategory: 10,
-			source_account: 1
+			source_account: 1,
+			destination_account: null
 		});
 	});
 
