@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as client from '../api/client';
-import { fetchTransactions } from './api';
-import type { Paginated, Transaction } from './types';
+import { fetchCategories, fetchSubcategories, fetchTransactions } from './api';
+import type { Category, Paginated, Subcategory, Transaction } from './types';
 
 vi.mock('../api/client', () => ({ apiJson: vi.fn() }));
 
@@ -48,9 +48,41 @@ describe('fetchTransactions', () => {
 		expect(apiJson.mock.calls[0][0]).toContain('page=3');
 	});
 
+	it('passes category and subcategory as query params', async () => {
+		apiJson.mockResolvedValueOnce(pageOf([], null));
+		await fetchTransactions({ category: 2, subcategory: 7 });
+		const path = apiJson.mock.calls[0][0] as string;
+		expect(path).toContain('category=2');
+		expect(path).toContain('subcategory=7');
+	});
+
 	it('returns the pagination envelope from the endpoint', async () => {
 		const payload = pageOf([tx(1)], 'http://x/api/v1/transactions/?page=2');
 		apiJson.mockResolvedValueOnce(payload);
 		await expect(fetchTransactions()).resolves.toEqual(payload);
+	});
+});
+
+describe('fetchCategories / fetchSubcategories', () => {
+	it('fetches all categories, following pagination', async () => {
+		const a: Category = { id: 1, name: 'Food', kind: 'expense' };
+		const b: Category = { id: 2, name: 'Work', kind: 'income' };
+		apiJson
+			.mockResolvedValueOnce({
+				count: 2,
+				next: 'http://x/api/v1/categories/?page=2',
+				previous: null,
+				results: [a]
+			} as Paginated<Category>)
+			.mockResolvedValueOnce({ count: 2, next: null, previous: null, results: [b] });
+		await expect(fetchCategories()).resolves.toEqual([a, b]);
+		expect(apiJson).toHaveBeenCalledTimes(2);
+	});
+
+	it('fetches subcategories from the subcategories endpoint', async () => {
+		const s: Subcategory = { id: 10, name: 'Groceries', category: 1 };
+		apiJson.mockResolvedValueOnce({ count: 1, next: null, previous: null, results: [s] });
+		await expect(fetchSubcategories()).resolves.toEqual([s]);
+		expect(apiJson.mock.calls[0][0]).toBe('/subcategories/');
 	});
 });

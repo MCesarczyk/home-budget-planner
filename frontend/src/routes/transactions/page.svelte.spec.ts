@@ -3,7 +3,7 @@ import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { ApiError } from '$lib/api/client';
 import { auth } from '$lib/auth/auth.store.svelte';
-import type { Paginated, Transaction } from '$lib/transactions/types';
+import type { Category, Paginated, Subcategory, Transaction } from '$lib/transactions/types';
 import {
 	currentMonth,
 	currentYear,
@@ -16,9 +16,25 @@ import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/paths', () => ({ resolve: (p: string) => p }));
-vi.mock('$lib/transactions/api', () => ({ fetchTransactions: vi.fn(), PAGE_SIZE: 50 }));
+vi.mock('$lib/transactions/api', () => ({
+	fetchTransactions: vi.fn(),
+	fetchCategories: vi.fn(),
+	fetchSubcategories: vi.fn(),
+	PAGE_SIZE: 50
+}));
 
 const fetchTransactions = vi.mocked(api.fetchTransactions);
+const fetchCategories = vi.mocked(api.fetchCategories);
+const fetchSubcategories = vi.mocked(api.fetchSubcategories);
+
+const categories: Category[] = [
+	{ id: 1, name: 'Food', kind: 'expense' },
+	{ id: 2, name: 'Work', kind: 'income' }
+];
+const subcategories: Subcategory[] = [
+	{ id: 10, name: 'Groceries', category: 1 },
+	{ id: 11, name: 'Salary', category: 2 }
+];
 
 const expense: Transaction = {
 	id: 1,
@@ -57,6 +73,8 @@ function envelope(results: Transaction[], count = results.length): Paginated<Tra
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	fetchCategories.mockResolvedValue(categories);
+	fetchSubcategories.mockResolvedValue(subcategories);
 	auth.user = { id: 1, username: 'ada', email: 'a@b.c', is_staff: false };
 	auth.loading = false;
 });
@@ -153,5 +171,46 @@ describe('transactions page', () => {
 
 		await expect.element(page.getByText('Page 1 of 3')).toBeInTheDocument();
 		await vi.waitFor(() => expect(fetchTransactions).toHaveBeenLastCalledWith({}, 1));
+	});
+
+	it('filters by the selected category alongside the period', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		await page.getByRole('combobox', { name: 'Category', exact: true }).selectOptions('1');
+
+		await vi.waitFor(() =>
+			expect(fetchTransactions).toHaveBeenLastCalledWith(
+				{ ...monthRange(currentMonth()), category: 1 },
+				1
+			)
+		);
+	});
+
+	it('narrows the subcategory options to the chosen category', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		await page.getByRole('combobox', { name: 'Category', exact: true }).selectOptions('1');
+
+		await expect.element(page.getByRole('option', { name: 'Groceries' })).toBeInTheDocument();
+		await expect.element(page.getByRole('option', { name: 'Salary' })).not.toBeInTheDocument();
+	});
+
+	it('filters by the selected subcategory', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		await page.getByRole('combobox', { name: 'Subcategory' }).selectOptions('10');
+
+		await vi.waitFor(() =>
+			expect(fetchTransactions).toHaveBeenLastCalledWith(
+				{ ...monthRange(currentMonth()), subcategory: 10 },
+				1
+			)
+		);
 	});
 });

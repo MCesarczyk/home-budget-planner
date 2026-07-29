@@ -19,6 +19,12 @@ export interface SubcategoryNested {
 	category: Category;
 }
 
+export interface Subcategory {
+	id: number;
+	name: string;
+	category: number;
+}
+
 export interface Transaction {
 	id: number;
 	type: TransactionType;

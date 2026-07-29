@@ -3,7 +3,13 @@
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import { ApiError } from '$lib/api/client';
-	import { fetchTransactions, PAGE_SIZE, type TransactionFilters } from '$lib/transactions/api';
+	import {
+		fetchCategories,
+		fetchSubcategories,
+		fetchTransactions,
+		PAGE_SIZE,
+		type TransactionFilters
+	} from '$lib/transactions/api';
 	import {
 		currentMonth,
 		currentYear,
@@ -12,34 +18,61 @@
 		shiftYear,
 		yearRange
 	} from '$lib/transactions/helpers';
-	import type { Transaction } from '$lib/transactions/types';
+	import type { Category, Subcategory, Transaction } from '$lib/transactions/types';
 
 	type Mode = 'all' | 'month' | 'year';
 
 	let mode = $state<Mode>('month');
 	let month = $state(currentMonth());
 	let year = $state(currentYear());
+	let categoryId = $state('');
+	let subcategoryId = $state('');
 	let pageNum = $state(1);
 	let transactions = $state<Transaction[]>([]);
 	let count = $state(0);
 	let loading = $state(true);
 	let error = $state('');
 
+	let categories = $state<Category[]>([]);
+	let subcategories = $state<Subcategory[]>([]);
+
 	let reqId = 0;
 	let totalPages = $derived(Math.max(1, Math.ceil(count / PAGE_SIZE)));
+	let subcategoryOptions = $derived(
+		categoryId ? subcategories.filter((s) => s.category === Number(categoryId)) : subcategories
+	);
 
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
 	});
 
-	let filters = $derived<TransactionFilters>(
-		mode === 'month' ? monthRange(month) : mode === 'year' ? yearRange(year) : {}
-	);
+	$effect(() => {
+		if (auth.isAuthenticated) loadOptions();
+	});
+
+	let filters = $derived<TransactionFilters>({
+		...(mode === 'month' ? monthRange(month) : mode === 'year' ? yearRange(year) : {}),
+		...(subcategoryId
+			? { subcategory: Number(subcategoryId) }
+			: categoryId
+				? { category: Number(categoryId) }
+				: {})
+	});
 
 	$effect(() => {
 		if (!auth.isAuthenticated) return;
 		load(filters, pageNum);
 	});
+
+	async function loadOptions() {
+		try {
+			const [c, s] = await Promise.all([fetchCategories(), fetchSubcategories()]);
+			categories = c;
+			subcategories = s;
+		} catch {
+			// non-fatal: the selects just stay empty
+		}
+	}
 
 	async function load(filters: TransactionFilters, page: number) {
 		const id = ++reqId;
@@ -69,6 +102,13 @@
 	}
 	function setYear(next: string) {
 		year = next;
+		pageNum = 1;
+	}
+	function onCategoryChange() {
+		subcategoryId = '';
+		pageNum = 1;
+	}
+	function onSubcategoryChange() {
 		pageNum = 1;
 	}
 	function prevPage() {
@@ -118,86 +158,114 @@
 
 <main class="min-h-[calc(100vh-3.5rem)] bg-slate-50 p-4 dark:bg-slate-950">
 	<div class="mx-auto max-w-4xl">
-		<div class="mb-4 flex flex-wrap items-center gap-3">
-			<h1 class="mr-auto text-xl font-semibold text-slate-900 dark:text-slate-100">Transactions</h1>
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+			<div class="flex items-center gap-3">
+				<div
+					class="inline-flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-700"
+				>
+					<button
+						type="button"
+						onclick={() => setMode('all')}
+						class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'all')}"
+					>
+						All
+					</button>
+					<button
+						type="button"
+						onclick={() => setMode('month')}
+						class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'month')}"
+					>
+						Month
+					</button>
+					<button
+						type="button"
+						onclick={() => setMode('year')}
+						class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'year')}"
+					>
+						Year
+					</button>
+				</div>
 
-			<div class="inline-flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-700">
-				<button
-					type="button"
-					onclick={() => setMode('all')}
-					class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'all')}"
-				>
-					All
-				</button>
-				<button
-					type="button"
-					onclick={() => setMode('month')}
-					class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'month')}"
-				>
-					Month
-				</button>
-				<button
-					type="button"
-					onclick={() => setMode('year')}
-					class="px-3 py-1.5 text-sm font-medium {toggleClass(mode === 'year')}"
-				>
-					Year
-				</button>
+				{#if mode === 'month'}
+					<div class="inline-flex items-center gap-1">
+						<button
+							type="button"
+							aria-label="Previous month"
+							onclick={() => setMonth(shiftMonth(month, -1))}
+							class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+						>
+							‹
+						</button>
+						<input
+							type="month"
+							aria-label="Month"
+							value={month}
+							onchange={(e) => setMonth(e.currentTarget.value)}
+							class="rounded-md border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+						/>
+						<button
+							type="button"
+							aria-label="Next month"
+							onclick={() => setMonth(shiftMonth(month, 1))}
+							class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+						>
+							›
+						</button>
+					</div>
+				{:else if mode === 'year'}
+					<div class="inline-flex items-center gap-1">
+						<button
+							type="button"
+							aria-label="Previous year"
+							onclick={() => setYear(shiftYear(year, -1))}
+							class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+						>
+							‹
+						</button>
+						<input
+							type="number"
+							aria-label="Year"
+							value={year}
+							onchange={(e) => setYear(e.currentTarget.value)}
+							class="w-20 rounded-md border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+						/>
+						<button
+							type="button"
+							aria-label="Next year"
+							onclick={() => setYear(shiftYear(year, 1))}
+							class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+						>
+							›
+						</button>
+					</div>
+				{/if}
 			</div>
 
-			{#if mode === 'month'}
-				<div class="inline-flex items-center gap-1">
-					<button
-						type="button"
-						aria-label="Previous month"
-						onclick={() => setMonth(shiftMonth(month, -1))}
-						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
-					>
-						‹
-					</button>
-					<input
-						type="month"
-						aria-label="Month"
-						value={month}
-						onchange={(e) => setMonth(e.currentTarget.value)}
-						class="rounded-md border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-					/>
-					<button
-						type="button"
-						aria-label="Next month"
-						onclick={() => setMonth(shiftMonth(month, 1))}
-						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
-					>
-						›
-					</button>
-				</div>
-			{:else if mode === 'year'}
-				<div class="inline-flex items-center gap-1">
-					<button
-						type="button"
-						aria-label="Previous year"
-						onclick={() => setYear(shiftYear(year, -1))}
-						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
-					>
-						‹
-					</button>
-					<input
-						type="number"
-						aria-label="Year"
-						value={year}
-						onchange={(e) => setYear(e.currentTarget.value)}
-						class="w-20 rounded-md border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-					/>
-					<button
-						type="button"
-						aria-label="Next year"
-						onclick={() => setYear(shiftYear(year, 1))}
-						class="rounded-md px-2 py-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
-					>
-						›
-					</button>
-				</div>
-			{/if}
+			<div class="flex items-center gap-3">
+				<select
+					aria-label="Category"
+					bind:value={categoryId}
+					onchange={onCategoryChange}
+					class="rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+				>
+					<option value="">All categories</option>
+					{#each categories as category (category.id)}
+						<option value={String(category.id)}>{category.name}</option>
+					{/each}
+				</select>
+
+				<select
+					aria-label="Subcategory"
+					bind:value={subcategoryId}
+					onchange={onSubcategoryChange}
+					class="rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+				>
+					<option value="">All subcategories</option>
+					{#each subcategoryOptions as subcategory (subcategory.id)}
+						<option value={String(subcategory.id)}>{subcategory.name}</option>
+					{/each}
+				</select>
+			</div>
 		</div>
 
 		<div
