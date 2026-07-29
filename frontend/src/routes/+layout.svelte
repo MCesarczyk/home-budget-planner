@@ -5,6 +5,7 @@
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import { theme } from '$lib/theme/theme.store.svelte';
 	import ThemeToggle from '$lib/theme/ThemeToggle.svelte';
+	import Nav from '$lib/components/Nav.svelte';
 
 	let { children } = $props();
 
@@ -16,7 +17,10 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<div class="fixed right-4 top-4 z-50">
+<div class="fixed top-2 right-2 z-50">
 	<ThemeToggle />
 </div>
+{#if auth.isAuthenticated}
+	<Nav />
+{/if}
 {@render children()}

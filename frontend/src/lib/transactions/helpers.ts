@@ -1,0 +1,39 @@
+function pad(n: number): string {
+	return String(n).padStart(2, '0');
+}
+
+function toKey(year: number, monthIndex: number): string {
+	return `${year}-${pad(monthIndex + 1)}`;
+}
+
+export function currentMonth(now: Date = new Date()): string {
+	return toKey(now.getFullYear(), now.getMonth());
+}
+
+export function today(now: Date = new Date()): string {
+	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+export function monthRange(ym: string): { dateFrom: string; dateTo: string } {
+	const [year, month] = ym.split('-').map(Number);
+	const lastDay = new Date(year, month, 0).getDate();
+	return { dateFrom: `${year}-${pad(month)}-01`, dateTo: `${year}-${pad(month)}-${pad(lastDay)}` };
+}
+
+export function shiftMonth(ym: string, delta: number): string {
+	const [year, month] = ym.split('-').map(Number);
+	const d = new Date(year, month - 1 + delta, 1);
+	return toKey(d.getFullYear(), d.getMonth());
+}
+
+export function currentYear(now: Date = new Date()): string {
+	return String(now.getFullYear());
+}
+
+export function yearRange(year: string): { dateFrom: string; dateTo: string } {
+	return { dateFrom: `${year}-01-01`, dateTo: `${year}-12-31` };
+}
+
+export function shiftYear(year: string, delta: number): string {
+	return String(Number(year) + delta);
+}
