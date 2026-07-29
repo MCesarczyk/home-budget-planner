@@ -9,8 +9,10 @@
 	let error = $state('');
 	let submitting = $state(false);
 
+	const ENTRY_PAGE = '/transactions';
+
 	$effect(() => {
-		if (auth.isAuthenticated) goto(resolve('/'));
+		if (auth.isAuthenticated) goto(resolve(ENTRY_PAGE));
 	});
 
 	async function handleSubmit(event: SubmitEvent) {
@@ -21,7 +23,7 @@
 		submitting = true;
 		try {
 			await auth.login(username, password);
-			await goto(resolve('/'));
+			await goto(resolve(ENTRY_PAGE));
 		} catch (e) {
 			error = messageFor(e);
 		} finally {
