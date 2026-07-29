@@ -3,44 +3,53 @@ import * as client from '../api/client';
 import { fetchTransactions } from './api';
 import type { Paginated, Transaction } from './types';
 
-vi.mock('../api/client', () => ({
-	apiJson: vi.fn().mockResolvedValue(undefined)
-}));
+vi.mock('../api/client', () => ({ apiJson: vi.fn() }));
 
 const apiJson = vi.mocked(client.apiJson);
 
 beforeEach(() => vi.clearAllMocks());
 
+function tx(id: number): Transaction {
+	return {
+		id,
+		type: 'expense',
+		tx_date: '2026-07-01',
+		amount: '1.00',
+		comment: '',
+		source_account: { id: 1, name: 'Checking' },
+		destination_account: null,
+		subcategory: { id: 1, name: 'Groceries', category: { id: 1, name: 'Food', kind: 'expense' } }
+	};
+}
+
+function pageOf(results: Transaction[], next: string | null): Paginated<Transaction> {
+	return { count: 0, next, previous: null, results };
+}
+
 describe('fetchTransactions', () => {
-	it('GETs the transactions list endpoint', async () => {
-		apiJson.mockResolvedValueOnce({ count: 0, next: null, previous: null, results: [] });
-		await fetchTransactions();
-		expect(apiJson).toHaveBeenCalledWith('/transactions/');
+	it('requests the list endpoint without date params by default', async () => {
+		apiJson.mockResolvedValueOnce(pageOf([tx(1)], null));
+		const result = await fetchTransactions();
+		const path = apiJson.mock.calls[0][0] as string;
+		expect(path).toContain('/transactions/');
+		expect(path).not.toContain('date_from');
+		expect(result).toEqual([tx(1)]);
 	});
 
-	it('returns the paginated payload from the endpoint', async () => {
-		const payload: Paginated<Transaction> = {
-			count: 1,
-			next: null,
-			previous: null,
-			results: [
-				{
-					id: 1,
-					type: 'expense',
-					tx_date: '2026-07-01',
-					amount: '12.50',
-					comment: '',
-					source_account: { id: 1, name: 'Checking' },
-					destination_account: null,
-					subcategory: {
-						id: 1,
-						name: 'Groceries',
-						category: { id: 1, name: 'Food', kind: 'expense' }
-					}
-				}
-			]
-		};
-		apiJson.mockResolvedValueOnce(payload);
-		await expect(fetchTransactions()).resolves.toEqual(payload);
+	it('passes the date range as query params', async () => {
+		apiJson.mockResolvedValueOnce(pageOf([], null));
+		await fetchTransactions({ dateFrom: '2026-07-01', dateTo: '2026-07-31' });
+		const path = apiJson.mock.calls[0][0] as string;
+		expect(path).toContain('date_from=2026-07-01');
+		expect(path).toContain('date_to=2026-07-31');
+	});
+
+	it('follows pagination and concatenates every page', async () => {
+		apiJson
+			.mockResolvedValueOnce(pageOf([tx(1)], 'http://x/api/v1/transactions/?page=2'))
+			.mockResolvedValueOnce(pageOf([tx(2)], null));
+		const result = await fetchTransactions();
+		expect(result.map((t) => t.id)).toEqual([1, 2]);
+		expect(apiJson).toHaveBeenCalledTimes(2);
 	});
 });

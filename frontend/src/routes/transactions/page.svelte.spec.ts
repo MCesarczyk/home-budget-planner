@@ -3,7 +3,8 @@ import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { ApiError } from '$lib/api/client';
 import { auth } from '$lib/auth/auth.store.svelte';
-import type { Paginated, Transaction } from '$lib/transactions/types';
+import type { Transaction } from '$lib/transactions/types';
+import { currentMonth, monthRange, shiftMonth } from '$lib/transactions/month';
 import * as api from '$lib/transactions/api';
 import Page from './+page.svelte';
 
@@ -44,10 +45,6 @@ const transfer: Transaction = {
 	subcategory: null
 };
 
-function paginated(results: Transaction[]): Paginated<Transaction> {
-	return { count: results.length, next: null, previous: null, results };
-}
-
 beforeEach(() => {
 	vi.clearAllMocks();
 	auth.user = { id: 1, username: 'ada', email: 'a@b.c', is_staff: false };
@@ -60,7 +57,7 @@ afterEach(() => {
 
 describe('transactions page', () => {
 	it('renders a row per transaction with derived type, signed amount and category', async () => {
-		fetchTransactions.mockResolvedValue(paginated([expense, income, transfer]));
+		fetchTransactions.mockResolvedValue([expense, income, transfer]);
 		render(Page);
 
 		await expect.element(page.getByText('Food · Groceries')).toBeInTheDocument();
@@ -70,18 +67,11 @@ describe('transactions page', () => {
 	});
 
 	it('labels a transfer with both account legs and no category', async () => {
-		fetchTransactions.mockResolvedValue(paginated([transfer]));
+		fetchTransactions.mockResolvedValue([transfer]);
 		render(Page);
 
 		await expect.element(page.getByText('Checking → Savings')).toBeInTheDocument();
 		await expect.element(page.getByText('—')).toBeInTheDocument();
-	});
-
-	it('shows an empty state when there are no transactions', async () => {
-		fetchTransactions.mockResolvedValue(paginated([]));
-		render(Page);
-
-		await expect.element(page.getByText('No transactions yet.')).toBeInTheDocument();
 	});
 
 	it('shows the error detail when the request fails', async () => {
@@ -89,5 +79,29 @@ describe('transactions page', () => {
 		render(Page);
 
 		await expect.element(page.getByText('Server exploded.')).toBeInTheDocument();
+	});
+
+	it('defaults to the current month and switches to no filter when All is chosen', async () => {
+		fetchTransactions.mockResolvedValue([]);
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		expect(fetchTransactions).toHaveBeenCalledWith(monthRange(currentMonth()));
+
+		await page.getByRole('button', { name: 'All' }).click();
+
+		await expect.element(page.getByText('No transactions yet.')).toBeInTheDocument();
+		await vi.waitFor(() => expect(fetchTransactions).toHaveBeenLastCalledWith({}));
+	});
+
+	it('reloads with the previous month when stepping back', async () => {
+		fetchTransactions.mockResolvedValue([]);
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		await page.getByRole('button', { name: 'Previous month' }).click();
+
+		const expected = monthRange(shiftMonth(currentMonth(), -1));
+		await vi.waitFor(() => expect(fetchTransactions).toHaveBeenLastCalledWith(expected));
 	});
 });
