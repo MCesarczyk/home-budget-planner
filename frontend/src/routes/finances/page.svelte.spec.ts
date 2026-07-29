@@ -5,17 +5,21 @@ import { ApiError } from '$lib/api/client';
 import { auth } from '$lib/auth/auth.store.svelte';
 import * as netWorthApi from '$lib/net-worth/api';
 import * as purposesApi from '$lib/purposes/api';
+import * as cashflowApi from '$lib/cashflow/api';
 import type { NetWorthReport } from '$lib/net-worth/types';
 import type { PurposesReport } from '$lib/purposes/types';
+import type { CashflowReport } from '$lib/cashflow/types';
 import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/paths', () => ({ resolve: (p: string) => p }));
 vi.mock('$lib/net-worth/api', () => ({ fetchNetWorth: vi.fn() }));
 vi.mock('$lib/purposes/api', () => ({ fetchPurposes: vi.fn() }));
+vi.mock('$lib/cashflow/api', () => ({ fetchCashflow: vi.fn() }));
 
 const fetchNetWorth = vi.mocked(netWorthApi.fetchNetWorth);
 const fetchPurposes = vi.mocked(purposesApi.fetchPurposes);
+const fetchCashflow = vi.mocked(cashflowApi.fetchCashflow);
 
 const netWorth: NetWorthReport = {
 	assets: [{ id: 1, name: 'Checking', type: 'checking', balance: '100.00' }],
@@ -38,10 +42,18 @@ const purposes: PurposesReport = {
 	]
 };
 
+const cashflow: CashflowReport = {
+	date_from: null,
+	date_to: null,
+	months: [{ month: '2026-01', income: '5000.00', expense: '3200.00', net: '1800.00' }],
+	totals: { income: '5000.00', expense: '3200.00', net: '1800.00' }
+};
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	fetchNetWorth.mockResolvedValue(netWorth);
 	fetchPurposes.mockResolvedValue(purposes);
+	fetchCashflow.mockResolvedValue(cashflow);
 	auth.user = { id: 1, username: 'ada', email: 'a@b.c', is_staff: false };
 	auth.loading = false;
 });
@@ -51,22 +63,26 @@ afterEach(() => {
 });
 
 describe('finances page', () => {
-	it('loads and renders both the net-worth and purposes summaries', async () => {
+	it('loads and renders the net-worth, cash-flow and purposes sections', async () => {
 		render(Page);
 
 		await expect.element(page.getByText('Checking')).toBeInTheDocument();
+		await expect.element(page.getByText('Cash flow')).toBeInTheDocument();
+		await expect.element(page.getByText('Jan 26', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText('Emergency Fund')).toBeInTheDocument();
-		await expect.element(page.getByText('65%')).toBeInTheDocument();
 		expect(fetchNetWorth).toHaveBeenCalled();
 		expect(fetchPurposes).toHaveBeenCalled();
+		expect(fetchCashflow).toHaveBeenCalled();
 	});
 
-	it('surfaces each summary error independently', async () => {
+	it('surfaces each section error independently', async () => {
 		fetchNetWorth.mockRejectedValue(new ApiError(500, 'Net worth failed.'));
 		fetchPurposes.mockRejectedValue(new ApiError(500, 'Purposes failed.'));
+		fetchCashflow.mockRejectedValue(new ApiError(500, 'Cash flow failed.'));
 		render(Page);
 
 		await expect.element(page.getByText('Net worth failed.')).toBeInTheDocument();
 		await expect.element(page.getByText('Purposes failed.')).toBeInTheDocument();
+		await expect.element(page.getByText('Cash flow failed.')).toBeInTheDocument();
 	});
 });

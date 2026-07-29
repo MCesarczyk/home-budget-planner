@@ -9,6 +9,9 @@
 	import { fetchPurposes } from '$lib/purposes/api';
 	import type { PurposesReport } from '$lib/purposes/types';
 	import PurposesSummary from '$lib/purposes/PurposesSummary.svelte';
+	import { fetchCashflow } from '$lib/cashflow/api';
+	import type { CashflowReport } from '$lib/cashflow/types';
+	import CashflowChart from '$lib/cashflow/CashflowChart.svelte';
 
 	let netWorth = $state<NetWorthReport | null>(null);
 	let nwLoading = $state(true);
@@ -18,6 +21,10 @@
 	let pLoading = $state(true);
 	let pError = $state('');
 
+	let cashflow = $state<CashflowReport | null>(null);
+	let cfLoading = $state(true);
+	let cfError = $state('');
+
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
 	});
@@ -26,6 +33,7 @@
 		if (!auth.isAuthenticated) return;
 		loadNetWorth();
 		loadPurposes();
+		loadCashflow();
 	});
 
 	async function loadNetWorth() {
@@ -51,6 +59,18 @@
 			pLoading = false;
 		}
 	}
+
+	async function loadCashflow() {
+		cfLoading = true;
+		cfError = '';
+		try {
+			cashflow = await fetchCashflow();
+		} catch (e) {
+			cfError = e instanceof ApiError ? e.message : 'Failed to load cash flow.';
+		} finally {
+			cfLoading = false;
+		}
+	}
 </script>
 
 <svelte:head><title>Finances</title></svelte:head>
@@ -59,6 +79,7 @@
 	<div class="mx-auto max-w-2xl">
 		<div class="space-y-4">
 			<NetWorthSummary report={netWorth} loading={nwLoading} error={nwError} />
+			<CashflowChart report={cashflow} loading={cfLoading} error={cfError} />
 			<PurposesSummary report={purposes} loading={pLoading} error={pError} />
 		</div>
 	</div>
