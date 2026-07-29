@@ -20,12 +20,16 @@ vi.mock('$lib/transactions/api', () => ({
 	fetchTransactions: vi.fn(),
 	fetchCategories: vi.fn(),
 	fetchSubcategories: vi.fn(),
+	fetchSpending: vi.fn(),
 	PAGE_SIZE: 50
 }));
 
 const fetchTransactions = vi.mocked(api.fetchTransactions);
 const fetchCategories = vi.mocked(api.fetchCategories);
 const fetchSubcategories = vi.mocked(api.fetchSubcategories);
+const fetchSpending = vi.mocked(api.fetchSpending);
+
+const emptyReport = { date_from: null, date_to: null, total: '0.00', categories: [] };
 
 const categories: Category[] = [
 	{ id: 1, name: 'Food', kind: 'expense' },
@@ -75,6 +79,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	fetchCategories.mockResolvedValue(categories);
 	fetchSubcategories.mockResolvedValue(subcategories);
+	fetchSpending.mockResolvedValue(emptyReport);
 	auth.user = { id: 1, username: 'ada', email: 'a@b.c', is_staff: false };
 	auth.loading = false;
 });
@@ -212,5 +217,36 @@ describe('transactions page', () => {
 				1
 			)
 		);
+	});
+
+	it('loads the spending report for the current period', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		expect(fetchSpending).toHaveBeenCalledWith(monthRange(currentMonth()));
+
+		await page.getByRole('button', { name: 'Year' }).click();
+		await vi.waitFor(() =>
+			expect(fetchSpending).toHaveBeenLastCalledWith(yearRange(currentYear()))
+		);
+	});
+
+	it('does not re-scope the spending report by the category filter (dates only)', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		const before = fetchSpending.mock.calls.length;
+
+		await page.getByRole('combobox', { name: 'Category', exact: true }).selectOptions('1');
+		await vi.waitFor(() =>
+			expect(fetchTransactions).toHaveBeenLastCalledWith(
+				{ ...monthRange(currentMonth()), category: 1 },
+				1
+			)
+		);
+
+		expect(fetchSpending.mock.calls.length).toBe(before);
 	});
 });

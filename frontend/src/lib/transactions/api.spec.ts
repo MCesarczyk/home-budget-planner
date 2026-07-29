@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as client from '../api/client';
-import { fetchCategories, fetchSubcategories, fetchTransactions } from './api';
-import type { Category, Paginated, Subcategory, Transaction } from './types';
+import { fetchCategories, fetchSpending, fetchSubcategories, fetchTransactions } from './api';
+import type { Category, Paginated, SpendingReport, Subcategory, Transaction } from './types';
 
 vi.mock('../api/client', () => ({ apiJson: vi.fn() }));
 
@@ -84,5 +84,29 @@ describe('fetchCategories / fetchSubcategories', () => {
 		apiJson.mockResolvedValueOnce({ count: 1, next: null, previous: null, results: [s] });
 		await expect(fetchSubcategories()).resolves.toEqual([s]);
 		expect(apiJson.mock.calls[0][0]).toBe('/subcategories/');
+	});
+});
+
+describe('fetchSpending', () => {
+	const report: SpendingReport = {
+		date_from: '2026-07-01',
+		date_to: '2026-07-31',
+		total: '100.00',
+		categories: []
+	};
+
+	it('hits the spending report endpoint with the date range', async () => {
+		apiJson.mockResolvedValueOnce(report);
+		await fetchSpending({ dateFrom: '2026-07-01', dateTo: '2026-07-31' });
+		const path = apiJson.mock.calls[0][0] as string;
+		expect(path).toContain('/reports/spending/');
+		expect(path).toContain('date_from=2026-07-01');
+		expect(path).toContain('date_to=2026-07-31');
+	});
+
+	it('omits the query string when no range is given', async () => {
+		apiJson.mockResolvedValueOnce(report);
+		await fetchSpending();
+		expect(apiJson.mock.calls[0][0]).toBe('/reports/spending/');
 	});
 });

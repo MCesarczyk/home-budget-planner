@@ -42,3 +42,24 @@ export interface Paginated<T> {
 	previous: string | null;
 	results: T[];
 }
+
+export interface SpendingSubcategory {
+	id: number;
+	name: string;
+	total: string;
+}
+
+export interface SpendingCategory {
+	id: number;
+	name: string;
+	kind: string;
+	total: string;
+	subcategories: SpendingSubcategory[];
+}
+
+export interface SpendingReport {
+	date_from: string | null;
+	date_to: string | null;
+	total: string;
+	categories: SpendingCategory[];
+}

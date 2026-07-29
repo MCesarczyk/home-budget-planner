@@ -5,9 +5,11 @@
 	import { ApiError } from '$lib/api/client';
 	import {
 		fetchCategories,
+		fetchSpending,
 		fetchSubcategories,
 		fetchTransactions,
 		PAGE_SIZE,
+		type DateRange,
 		type TransactionFilters
 	} from '$lib/transactions/api';
 	import {
@@ -18,7 +20,8 @@
 		shiftYear,
 		yearRange
 	} from '$lib/transactions/helpers';
-	import type { Category, Subcategory, Transaction } from '$lib/transactions/types';
+	import type { Category, SpendingReport, Subcategory, Transaction } from '$lib/transactions/types';
+	import SpendingSummary from '$lib/transactions/SpendingSummary.svelte';
 
 	type Mode = 'all' | 'month' | 'year';
 
@@ -36,8 +39,16 @@
 	let categories = $state<Category[]>([]);
 	let subcategories = $state<Subcategory[]>([]);
 
+	let spending = $state<SpendingReport | null>(null);
+	let spendingLoading = $state(true);
+	let spendingError = $state('');
+
 	let reqId = 0;
+	let spendingReqId = 0;
 	let totalPages = $derived(Math.max(1, Math.ceil(count / PAGE_SIZE)));
+	let periodLabel = $derived(
+		mode === 'month' ? 'This month' : mode === 'year' ? 'This year' : 'All time'
+	);
 	let subcategoryOptions = $derived(
 		categoryId ? subcategories.filter((s) => s.category === Number(categoryId)) : subcategories
 	);
@@ -50,8 +61,12 @@
 		if (auth.isAuthenticated) loadOptions();
 	});
 
+	let dateRange = $derived<DateRange>(
+		mode === 'month' ? monthRange(month) : mode === 'year' ? yearRange(year) : {}
+	);
+
 	let filters = $derived<TransactionFilters>({
-		...(mode === 'month' ? monthRange(month) : mode === 'year' ? yearRange(year) : {}),
+		...dateRange,
 		...(subcategoryId
 			? { subcategory: Number(subcategoryId) }
 			: categoryId
@@ -63,6 +78,28 @@
 		if (!auth.isAuthenticated) return;
 		load(filters, pageNum);
 	});
+
+	// The spending report is date-scoped only — it ignores the category filter.
+	$effect(() => {
+		if (!auth.isAuthenticated) return;
+		loadSpending(dateRange);
+	});
+
+	async function loadSpending(range: DateRange) {
+		const id = ++spendingReqId;
+		spendingLoading = true;
+		spendingError = '';
+		try {
+			const data = await fetchSpending(range);
+			if (id !== spendingReqId) return;
+			spending = data;
+		} catch (e) {
+			if (id !== spendingReqId) return;
+			spendingError = e instanceof ApiError ? e.message : 'Failed to load spending.';
+		} finally {
+			if (id === spendingReqId) spendingLoading = false;
+		}
+	}
 
 	async function loadOptions() {
 		try {
@@ -157,7 +194,7 @@
 <svelte:head><title>Transactions</title></svelte:head>
 
 <main class="min-h-[calc(100vh-3.5rem)] bg-slate-50 p-4 dark:bg-slate-950">
-	<div class="mx-auto max-w-4xl">
+	<div class="mx-auto max-w-6xl">
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 			<div class="flex items-center gap-3">
 				<div
@@ -268,99 +305,114 @@
 			</div>
 		</div>
 
-		<div
-			class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800"
-		>
-			{#if loading}
-				<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-			{:else if error}
-				<p class="p-8 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
-			{:else if transactions.length === 0}
-				<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-					{mode === 'month'
-						? 'No transactions this month.'
-						: mode === 'year'
-							? 'No transactions this year.'
-							: 'No transactions yet.'}
-				</p>
-			{:else}
-				<div class="max-h-[calc(100vh-13rem)] scrollbar-thin overflow-y-auto">
-					<table class="w-full text-left text-sm">
-						<thead
-							class="sticky top-0 border-b border-slate-200 bg-white text-xs tracking-wide text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
-						>
-							<tr>
-								<th class="px-4 py-3 font-medium">Date</th>
-								<th class="px-4 py-3 font-medium">Type</th>
-								<th class="px-4 py-3 font-medium">Category</th>
-								<th class="px-4 py-3 font-medium">Account</th>
-								<th class="px-4 py-3 text-right font-medium">Amount</th>
-							</tr>
-						</thead>
-						<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-							{#each transactions as tx (tx.id)}
-								<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-									<td class="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300"
-										>{tx.tx_date}</td
-									>
-									<td class="px-4 py-3">
-										<span
-											class="rounded-full px-2 py-0.5 text-xs font-medium {badgeClass[tx.type]}"
-										>
-											{tx.type}
-										</span>
-									</td>
-									<td class="px-4 py-3 text-slate-700 dark:text-slate-300">
-										{categoryLabel(tx)}
-										{#if tx.comment}
-											<span class="block text-xs text-slate-400 dark:text-slate-500"
-												>{tx.comment}</span
+		<div class="grid gap-4 lg:grid-cols-3">
+			<div class="lg:col-span-2">
+				<div
+					class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800"
+				>
+					{#if loading}
+						<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+					{:else if error}
+						<p class="p-8 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
+					{:else if transactions.length === 0}
+						<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+							{mode === 'month'
+								? 'No transactions this month.'
+								: mode === 'year'
+									? 'No transactions this year.'
+									: 'No transactions yet.'}
+						</p>
+					{:else}
+						<div class="max-h-[calc(100vh-13rem)] scrollbar-thin overflow-y-auto">
+							<table class="w-full text-left text-sm">
+								<thead
+									class="sticky top-0 border-b border-slate-200 bg-white text-xs tracking-wide text-slate-500 uppercase dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+								>
+									<tr>
+										<th class="px-4 py-3 font-medium">Date</th>
+										<th class="px-4 py-3 font-medium">Type</th>
+										<th class="px-4 py-3 font-medium">Category</th>
+										<th class="px-4 py-3 font-medium">Account</th>
+										<th class="px-4 py-3 text-right font-medium">Amount</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+									{#each transactions as tx (tx.id)}
+										<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+											<td class="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300"
+												>{tx.tx_date}</td
 											>
-										{/if}
-									</td>
-									<td class="px-4 py-3 text-slate-600 dark:text-slate-300">{accountsLabel(tx)}</td>
-									<td
-										class="px-4 py-3 text-right font-medium whitespace-nowrap {amountClass(
-											tx.type
-										)}"
-									>
-										{signedAmount(tx)}
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
+											<td class="px-4 py-3">
+												<span
+													class="rounded-full px-2 py-0.5 text-xs font-medium {badgeClass[tx.type]}"
+												>
+													{tx.type}
+												</span>
+											</td>
+											<td class="px-4 py-3 text-slate-700 dark:text-slate-300">
+												{categoryLabel(tx)}
+												{#if tx.comment}
+													<span class="block text-xs text-slate-400 dark:text-slate-500"
+														>{tx.comment}</span
+													>
+												{/if}
+											</td>
+											<td class="px-4 py-3 text-slate-600 dark:text-slate-300"
+												>{accountsLabel(tx)}</td
+											>
+											<td
+												class="px-4 py-3 text-right font-medium whitespace-nowrap {amountClass(
+													tx.type
+												)}"
+											>
+												{signedAmount(tx)}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
 				</div>
-			{/if}
-		</div>
 
-		{#if !loading && !error && count > 0}
-			<div
-				class="mt-4 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400"
-			>
-				<span>{count} transaction{count === 1 ? '' : 's'}</span>
-				<div class="inline-flex items-center gap-3">
-					<button
-						type="button"
-						aria-label="Previous page"
-						onclick={prevPage}
-						disabled={pageNum <= 1}
-						class="rounded-md px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:ring-slate-700 dark:hover:bg-slate-800"
+				{#if !loading && !error && count > 0}
+					<div
+						class="mt-4 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400"
 					>
-						‹ Prev
-					</button>
-					<span>Page {pageNum} of {totalPages}</span>
-					<button
-						type="button"
-						aria-label="Next page"
-						onclick={nextPage}
-						disabled={pageNum >= totalPages}
-						class="rounded-md px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:ring-slate-700 dark:hover:bg-slate-800"
-					>
-						Next ›
-					</button>
-				</div>
+						<span>{count} transaction{count === 1 ? '' : 's'}</span>
+						<div class="inline-flex items-center gap-3">
+							<button
+								type="button"
+								aria-label="Previous page"
+								onclick={prevPage}
+								disabled={pageNum <= 1}
+								class="rounded-md px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:ring-slate-700 dark:hover:bg-slate-800"
+							>
+								‹ Prev
+							</button>
+							<span>Page {pageNum} of {totalPages}</span>
+							<button
+								type="button"
+								aria-label="Next page"
+								onclick={nextPage}
+								disabled={pageNum >= totalPages}
+								class="rounded-md px-3 py-1.5 ring-1 ring-slate-300 hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40 dark:ring-slate-700 dark:hover:bg-slate-800"
+							>
+								Next ›
+							</button>
+						</div>
+					</div>
+				{/if}
 			</div>
-		{/if}
+
+			<aside class="lg:col-span-1">
+				<SpendingSummary
+					report={spending}
+					loading={spendingLoading}
+					error={spendingError}
+					label={periodLabel}
+				/>
+			</aside>
+		</div>
 	</div>
 </main>
