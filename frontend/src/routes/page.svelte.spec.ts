@@ -25,6 +25,12 @@ vi.mock('$lib/categories/api', () => ({
 	updateCategory: vi.fn(),
 	deleteCategory: vi.fn()
 }));
+vi.mock('$lib/subcategories/api', () => ({
+	fetchSubcategoryList: vi.fn(),
+	createSubcategory: vi.fn(),
+	updateSubcategory: vi.fn(),
+	deleteSubcategory: vi.fn()
+}));
 
 const goto_ = vi.mocked(goto);
 
@@ -36,6 +42,8 @@ beforeEach(async () => {
 	vi.mocked(purposesApi.fetchPurposeList).mockResolvedValue([]);
 	const categoriesApi = await import('$lib/categories/api');
 	vi.mocked(categoriesApi.fetchCategoryList).mockResolvedValue([]);
+	const subcategoriesApi = await import('$lib/subcategories/api');
+	vi.mocked(subcategoriesApi.fetchSubcategoryList).mockResolvedValue([]);
 	auth.user = null;
 	auth.loading = false;
 });

@@ -5,6 +5,7 @@
 	import AccountsManager from '$lib/accounts/AccountsManager.svelte';
 	import PurposesManager from '$lib/purposes/PurposesManager.svelte';
 	import CategoriesManager from '$lib/categories/CategoriesManager.svelte';
+	import SubcategoriesManager from '$lib/subcategories/SubcategoriesManager.svelte';
 
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
@@ -43,6 +44,7 @@
 				<AccountsManager />
 				<PurposesManager />
 				<CategoriesManager />
+				<SubcategoriesManager />
 			</div>
 		{/if}
 	</div>
