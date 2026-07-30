@@ -2,6 +2,10 @@ const BASE = '/api/v1';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE']);
 
+// Requests to these must not trigger the 401 refresh-and-retry: a 401 from login
+// is bad credentials, and /auth/refresh/ is what the retry would use.
+const AUTH_PATHS = new Set(['/auth/csrf/', '/auth/login/', '/auth/logout/', '/auth/refresh/']);
+
 export class ApiError extends Error {
 	readonly status: number;
 
@@ -18,7 +22,7 @@ function readCookie(name: string): string | null {
 	return match ? decodeURIComponent(match[1]) : null;
 }
 
-export async function api(path: string, options: RequestInit = {}): Promise<Response> {
+async function rawFetch(path: string, options: RequestInit = {}): Promise<Response> {
 	const method = (options.method ?? 'GET').toUpperCase();
 	const headers = new Headers(options.headers);
 
@@ -31,6 +35,36 @@ export async function api(path: string, options: RequestInit = {}): Promise<Resp
 	}
 
 	return fetch(BASE + path, { ...options, headers, credentials: 'include' });
+}
+
+// The access token is short-lived (~15 min) and expires while idle; exchange the
+// longer-lived refresh cookie for a fresh one. Single-flight, so a burst of
+// concurrent 401s triggers only one refresh.
+let refreshInFlight: Promise<boolean> | null = null;
+
+function refreshSession(): Promise<boolean> {
+	if (!refreshInFlight) {
+		refreshInFlight = rawFetch('/auth/refresh/', { method: 'POST' })
+			.then((res) => res.ok)
+			.catch(() => false)
+			.finally(() => {
+				refreshInFlight = null;
+			});
+	}
+	return refreshInFlight;
+}
+
+export async function api(path: string, options: RequestInit = {}): Promise<Response> {
+	const res = await rawFetch(path, options);
+
+	// On an expired access token, silently refresh once and retry the request so
+	// the user never has to reload after the app has been idle.
+	if (res.status === 401 && !AUTH_PATHS.has(path)) {
+		const refreshed = await refreshSession();
+		if (refreshed) return rawFetch(path, options);
+	}
+
+	return res;
 }
 
 // Turn a DRF error body into a human-readable message. DRF returns either

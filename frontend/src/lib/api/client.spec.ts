@@ -38,6 +38,49 @@ describe('api()', () => {
 	});
 });
 
+describe('api() token refresh on 401', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('refreshes and retries once when the access token has expired', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response('', { status: 401 })) // original request
+			.mockResolvedValueOnce(new Response('', { status: 200 })) // /auth/refresh/
+			.mockResolvedValueOnce(new Response('{}', { status: 200 })); // retried request
+		vi.stubGlobal('fetch', fetchMock);
+
+		const res = await api('/transactions/');
+
+		expect(res.status).toBe(200);
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/auth/refresh/');
+		expect(fetchMock.mock.calls[1][1].method).toBe('POST');
+	});
+
+	it('surfaces the 401 without retrying when the refresh fails', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(new Response('', { status: 401 })) // original request
+			.mockResolvedValueOnce(new Response('', { status: 401 })); // refresh rejected
+		vi.stubGlobal('fetch', fetchMock);
+
+		const res = await api('/transactions/');
+
+		expect(res.status).toBe(401);
+		expect(fetchMock).toHaveBeenCalledTimes(2); // original + refresh, no retry
+	});
+
+	it('does not attempt a refresh for a 401 from an auth endpoint', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 401 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const res = await api('/auth/login/', { method: 'POST', body: '{}' });
+
+		expect(res.status).toBe(401);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe('apiJson()', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
