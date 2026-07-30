@@ -54,7 +54,7 @@
 </script>
 
 <div
-	class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800"
+	class="flex h-72 flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800"
 >
 	<div
 		class="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800"
@@ -76,7 +76,9 @@
 	{:else if subcategories.length === 0}
 		<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">No subcategories yet.</p>
 	{:else}
-		<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+		<ul
+			class="min-h-0 flex-1 scrollbar-thin divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800"
+		>
 			{#each subcategories as subcategory (subcategory.id)}
 				<li>
 					<div

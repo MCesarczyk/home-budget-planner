@@ -20,7 +20,7 @@
 <svelte:head><title>Settings</title></svelte:head>
 
 <main class="min-h-[calc(100vh-3.5rem)] bg-slate-50 p-4 dark:bg-slate-950">
-	<div class="mx-auto max-w-2xl">
+	<div class="mx-auto max-w-4xl">
 		{#if auth.loading}
 			<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</p>
 		{:else if auth.user}
@@ -40,7 +40,7 @@
 				</button>
 			</div>
 
-			<div class="space-y-4">
+			<div class="grid items-start gap-4 sm:grid-cols-2">
 				<AccountsManager />
 				<PurposesManager />
 				<CategoriesManager />
