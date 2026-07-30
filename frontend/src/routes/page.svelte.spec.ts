@@ -19,6 +19,12 @@ vi.mock('$lib/purposes/api', () => ({
 	updatePurpose: vi.fn(),
 	deletePurpose: vi.fn()
 }));
+vi.mock('$lib/categories/api', () => ({
+	fetchCategoryList: vi.fn(),
+	createCategory: vi.fn(),
+	updateCategory: vi.fn(),
+	deleteCategory: vi.fn()
+}));
 
 const goto_ = vi.mocked(goto);
 
@@ -28,6 +34,8 @@ beforeEach(async () => {
 	vi.mocked(accountsApi.fetchAccounts).mockResolvedValue([]);
 	const purposesApi = await import('$lib/purposes/api');
 	vi.mocked(purposesApi.fetchPurposeList).mockResolvedValue([]);
+	const categoriesApi = await import('$lib/categories/api');
+	vi.mocked(categoriesApi.fetchCategoryList).mockResolvedValue([]);
 	auth.user = null;
 	auth.loading = false;
 });

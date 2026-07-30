@@ -4,6 +4,7 @@
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import AccountsManager from '$lib/accounts/AccountsManager.svelte';
 	import PurposesManager from '$lib/purposes/PurposesManager.svelte';
+	import CategoriesManager from '$lib/categories/CategoriesManager.svelte';
 
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
@@ -41,6 +42,7 @@
 			<div class="space-y-4">
 				<AccountsManager />
 				<PurposesManager />
+				<CategoriesManager />
 			</div>
 		{/if}
 	</div>
