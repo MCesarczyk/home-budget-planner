@@ -7,11 +7,20 @@ import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/paths', () => ({ resolve: (p: string) => p }));
+vi.mock('$lib/accounts/api', () => ({
+	fetchAccounts: vi.fn(),
+	fetchPurposeOptions: vi.fn(),
+	createAccount: vi.fn(),
+	updateAccount: vi.fn(),
+	deleteAccount: vi.fn()
+}));
 
 const goto_ = vi.mocked(goto);
 
-beforeEach(() => {
+beforeEach(async () => {
 	vi.clearAllMocks();
+	const accountsApi = await import('$lib/accounts/api');
+	vi.mocked(accountsApi.fetchAccounts).mockResolvedValue([]);
 	auth.user = null;
 	auth.loading = false;
 });
@@ -28,7 +37,7 @@ describe('home page', () => {
 		auth.user = { id: 1, username: 'ada', email: 'a@b.c', is_staff: false };
 		render(Page);
 
-		await expect.element(page.getByText('ada')).toBeInTheDocument();
+		await expect.element(page.getByText('Signed in as ada')).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
 	});
 

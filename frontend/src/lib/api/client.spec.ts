@@ -64,12 +64,28 @@ describe('apiJson()', () => {
 		});
 	});
 
-	it('falls back to the status text when the error body is not JSON', async () => {
+	it('flattens DRF field errors into a readable message', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi
 				.fn()
-				.mockResolvedValue(new Response('<html>', { status: 500, statusText: 'Server Error' }))
+				.mockResolvedValue(
+					jsonResponse(
+						{ is_active: ['Account still holds 7837.17; transfer or withdraw the balance first.'] },
+						{ status: 400 }
+					)
+				)
+		);
+		const err = await apiJson('/accounts/1/', { method: 'PATCH' }).catch((e: unknown) => e);
+		expect((err as ApiError).message).toBe(
+			'Account still holds 7837.17; transfer or withdraw the balance first.'
+		);
+	});
+
+	it('falls back to the status text when the error body is not JSON', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(new Response('<html>', { status: 500, statusText: 'Server Error' }))
 		);
 		const err = await apiJson('/x').catch((e: unknown) => e);
 		expect(err).toBeInstanceOf(ApiError);

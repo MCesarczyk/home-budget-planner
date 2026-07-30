@@ -18,7 +18,7 @@ describe('Nav', () => {
 	it('renders a link for each destination', async () => {
 		route.path = '/';
 		render(Nav);
-		await expect.element(page.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+		await expect.element(page.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/');
 		await expect
 			.element(page.getByRole('link', { name: 'Transactions' }))
 			.toHaveAttribute('href', '/transactions');
@@ -34,7 +34,7 @@ describe('Nav', () => {
 			.element(page.getByRole('link', { name: 'Transactions' }))
 			.toHaveAttribute('aria-current', 'page');
 		await expect
-			.element(page.getByRole('link', { name: 'Home' }))
+			.element(page.getByRole('link', { name: 'Settings' }))
 			.not.toHaveAttribute('aria-current');
 	});
 });

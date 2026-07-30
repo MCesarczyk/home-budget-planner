@@ -33,14 +33,30 @@ export async function api(path: string, options: RequestInit = {}): Promise<Resp
 	return fetch(BASE + path, { ...options, headers, credentials: 'include' });
 }
 
+// Turn a DRF error body into a human-readable message. DRF returns either
+// `{detail: "..."}` or per-field errors like `{field: ["msg", ...]}`; flatten
+// the latter into a sentence instead of dumping raw JSON at the user.
+function errorDetail(data: unknown): string {
+	if (data && typeof data === 'object') {
+		const obj = data as Record<string, unknown>;
+		if (typeof obj.detail === 'string') return obj.detail;
+		const messages: string[] = [];
+		for (const value of Object.values(obj)) {
+			if (Array.isArray(value)) messages.push(...value.map((v) => String(v)));
+			else if (typeof value === 'string') messages.push(value);
+		}
+		if (messages.length) return messages.join(' ');
+	}
+	return JSON.stringify(data);
+}
+
 export async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
 	const res = await api(path, options);
 
 	if (!res.ok) {
 		let detail = res.statusText;
 		try {
-			const data = await res.json();
-			detail = data?.detail ?? JSON.stringify(data);
+			detail = errorDetail(await res.json());
 		} catch {
 			// non-JSON body — keep the status text
 		}
