@@ -11,8 +11,13 @@ vi.mock('$lib/accounts/api', () => ({
 	fetchAccounts: vi.fn(),
 	fetchPurposeOptions: vi.fn(),
 	createAccount: vi.fn(),
-	updateAccount: vi.fn(),
-	deleteAccount: vi.fn()
+	updateAccount: vi.fn()
+}));
+vi.mock('$lib/purposes/api', () => ({
+	fetchPurposeList: vi.fn(),
+	createPurpose: vi.fn(),
+	updatePurpose: vi.fn(),
+	deletePurpose: vi.fn()
 }));
 
 const goto_ = vi.mocked(goto);
@@ -21,6 +26,8 @@ beforeEach(async () => {
 	vi.clearAllMocks();
 	const accountsApi = await import('$lib/accounts/api');
 	vi.mocked(accountsApi.fetchAccounts).mockResolvedValue([]);
+	const purposesApi = await import('$lib/purposes/api');
+	vi.mocked(purposesApi.fetchPurposeList).mockResolvedValue([]);
 	auth.user = null;
 	auth.loading = false;
 });

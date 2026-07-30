@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import AccountsManager from '$lib/accounts/AccountsManager.svelte';
+	import PurposesManager from '$lib/purposes/PurposesManager.svelte';
 
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
@@ -37,7 +38,10 @@
 				</button>
 			</div>
 
-			<AccountsManager />
+			<div class="space-y-4">
+				<AccountsManager />
+				<PurposesManager />
+			</div>
 		{/if}
 	</div>
 </main>
