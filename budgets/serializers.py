@@ -130,3 +130,41 @@ class BudgetPlanWriteSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return BudgetPlanReadSerializer(instance, context=self.context).data
+
+
+# --- Plan-vs-actual (realisation progress) ----------------------------------
+# Computed dicts, not model instances (like the reports serializers): planned
+# amounts from the plan joined to actual transaction totals for the same month.
+class ProgressLineSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    planned = serializers.DecimalField(**_MONEY)
+    actual = serializers.DecimalField(**_MONEY)
+    remaining = serializers.DecimalField(**_MONEY)
+    # actual / planned; null when the subcategory has spending but no plan line
+    # (unbudgeted) so there is nothing to divide by.
+    progress = serializers.FloatField(allow_null=True)
+
+
+class ProgressCategorySerializer(ProgressLineSerializer):
+    kind = serializers.CharField()
+    subcategories = ProgressLineSerializer(many=True)
+
+
+class ProgressTotalSerializer(serializers.Serializer):
+    planned = serializers.DecimalField(**_MONEY)
+    actual = serializers.DecimalField(**_MONEY)
+    remaining = serializers.DecimalField(**_MONEY)
+    progress = serializers.FloatField(allow_null=True)
+
+
+class ProgressTotalsSerializer(serializers.Serializer):
+    income = ProgressTotalSerializer()
+    expense = ProgressTotalSerializer()
+
+
+class BudgetPlanProgressSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    month = serializers.DateField()
+    categories = ProgressCategorySerializer(many=True)
+    totals = ProgressTotalsSerializer()

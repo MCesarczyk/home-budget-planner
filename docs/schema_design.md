@@ -390,13 +390,15 @@ into `assets` / `liabilities` with subtotals, where
 # v4 — Budget plans
 
 Status: **implemented.** New `budgets` app (`BudgetPlan`, `BudgetItem`) exposed at
-`GET/POST/PUT/PATCH/DELETE /api/v1/budget-plans/`. A plan holds one planned amount
-per subcategory for a given month.
+`GET/POST/PUT/PATCH/DELETE /api/v1/budget-plans/`, plus **realisation progress**
+(plan vs actual) at `/api/v1/budget-plans/{id}/progress/` and
+`/api/v1/budget-plans/current/progress/`. A plan holds one planned amount per
+subcategory for a given month.
 
 v4 lets the user set a **monthly budget**: for the current month, a planned amount
 against each subcategory. Plans are stored and fetched from the budget-plans
-endpoint. This is the *plan* side; comparing it to actual transactions
-(plan-vs-actual reporting) is a natural follow-up but not part of v4.
+endpoint, and the progress routes join each plan to the actual transactions for
+its month so the UI can show realisation next to the plan.
 
 ## The core insight
 
@@ -472,11 +474,24 @@ Application-level (serializer):
 - **List** supports `?month=YYYY-MM` (or a full `YYYY-MM-DD`) to fetch a given
   month's plan.
 
+## Realisation progress (plan vs actual)
+
+`GET /api/v1/budget-plans/{id}/progress/` (and `/current/progress/` for the plan
+currently in effect — the current month, or the most recent prior month if none)
+joins the plan to the **actual transactions in its month**:
+
+- Actuals are a single `GROUP BY subcategory` aggregate over transactions whose
+  `tx_date` falls in the plan's month (transfers, having no subcategory, drop out).
+  Two queries total; no N+1.
+- Each line reports `planned`, `actual`, `remaining` (`planned − actual`) and
+  `progress` (`actual / planned`). Lines roll up to categories and to
+  income/expense totals.
+- **Unbudgeted spend is included:** a subcategory with actuals but no plan line
+  appears with `planned = 0` and `progress = null`, so the view reflects the whole
+  month, not just what was planned.
+
 ## Deferred (not in v4)
 
-- **Plan-vs-actual reporting.** Comparing each planned line to the summed actual
-  transactions for that subcategory and month is the obvious next report; v4 only
-  stores and serves the plan.
 - **Category-level (lump-sum) budgeting.** Every line is a subcategory; budgeting a
   whole category means adding a line per subcategory. A category-grain line is only
   worth adding if the subcategory grain proves too fine in practice.
