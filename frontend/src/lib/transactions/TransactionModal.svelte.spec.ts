@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import { ApiError } from '$lib/api/client';
 import TransactionModal from './TransactionModal.svelte';
 import * as api from './api';
 import { today } from './helpers';
@@ -108,5 +109,19 @@ describe('TransactionModal', () => {
 
 		await expect.element(page.getByRole('option', { name: 'Checking' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+	});
+
+	it('clears a previous error when reopened', async () => {
+		updateTransaction.mockRejectedValue(new ApiError(400, 'Save failed.'));
+		const props = { open: true, transaction: existing, onclose: vi.fn(), onsaved: vi.fn() };
+		const { rerender } = render(TransactionModal, props);
+
+		await expect.element(page.getByText('Edit transaction')).toBeInTheDocument();
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect.element(page.getByText('Save failed.')).toBeInTheDocument();
+
+		await rerender({ ...props, open: false });
+		await rerender({ ...props, open: true });
+		await expect.element(page.getByText('Save failed.')).not.toBeInTheDocument();
 	});
 });

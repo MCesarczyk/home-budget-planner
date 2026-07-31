@@ -33,7 +33,10 @@
 	let deleting = $state(false);
 	let error = $state('');
 
-	// Fetch the option lists lazily the first time the modal is opened.
+	$effect(() => {
+		if (open) error = '';
+	});
+
 	$effect(() => {
 		if (open && !loaded) loadOptions();
 	});

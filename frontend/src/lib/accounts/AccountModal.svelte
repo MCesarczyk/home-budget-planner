@@ -22,6 +22,10 @@
 	let submitting = $state(false);
 	let error = $state('');
 
+	$effect(() => {
+		if (open) error = '';
+	});
+
 	// The active state defaults to the account's, but archive/restore can override
 	// it in place (a writable derived — it resets when a different account opens).
 	let liveActive = $derived(account?.is_active ?? true);

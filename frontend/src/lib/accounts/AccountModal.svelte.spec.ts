@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import { ApiError } from '$lib/api/client';
 import AccountModal from './AccountModal.svelte';
 import * as api from './api';
 import type { Account } from './types';
@@ -97,5 +98,18 @@ describe('AccountModal', () => {
 		// Stays open and the button flips to Restore.
 		await expect.element(page.getByRole('button', { name: 'Restore' })).toBeInTheDocument();
 		expect(onclose).not.toHaveBeenCalled();
+	});
+
+	it('clears a previous error when reopened', async () => {
+		updateAccount.mockRejectedValue(new ApiError(400, 'Save failed.'));
+		const props = { open: true, account: existing, onclose: vi.fn(), onsaved: vi.fn() };
+		const { rerender } = render(AccountModal, props);
+
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect.element(page.getByText('Save failed.')).toBeInTheDocument();
+
+		await rerender({ ...props, open: false });
+		await rerender({ ...props, open: true });
+		await expect.element(page.getByText('Save failed.')).not.toBeInTheDocument();
 	});
 });

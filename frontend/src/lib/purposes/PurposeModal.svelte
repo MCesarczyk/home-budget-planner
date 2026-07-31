@@ -21,6 +21,10 @@
 	let deleting = $state(false);
 	let error = $state('');
 
+	$effect(() => {
+		if (open) error = '';
+	});
+
 	async function handleSubmit(input: PurposeInput) {
 		submitting = true;
 		error = '';
