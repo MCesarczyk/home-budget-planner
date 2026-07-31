@@ -31,8 +31,26 @@ export interface BudgetProgressReport {
 	};
 }
 
-// Minimal plan reference for the month selector (the list endpoint returns more).
-export interface BudgetPlanRef {
+import type { SubcategoryNested } from '$lib/transactions/types';
+
+// The list/read shape of a plan: its items with each subcategory expanded. Used
+// both for the month selector and to seed the edit form (no extra fetch needed).
+export interface BudgetItemDetail {
+	id: number;
+	amount: string;
+	subcategory: SubcategoryNested;
+}
+
+export interface BudgetPlanDetail {
 	id: number;
 	month: string;
+	planned_income: string;
+	planned_expense: string;
+	items: BudgetItemDetail[];
+}
+
+// Write payload for create/replace.
+export interface BudgetPlanInput {
+	month: string; // YYYY-MM-DD
+	items: { subcategory: number; amount: string }[];
 }

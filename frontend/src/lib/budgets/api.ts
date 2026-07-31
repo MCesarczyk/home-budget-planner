@@ -1,5 +1,5 @@
 import { apiJson } from '../api/client';
-import type { BudgetPlanRef, BudgetProgressReport } from './types';
+import type { BudgetPlanDetail, BudgetPlanInput, BudgetProgressReport } from './types';
 
 interface Page<T> {
 	next: string | null;
@@ -18,9 +18,29 @@ async function fetchAll<T>(path: string): Promise<T[]> {
 	return results;
 }
 
-// Month list for the plan selector (only id + month are used here).
-export function fetchBudgetPlans(): Promise<BudgetPlanRef[]> {
-	return fetchAll<BudgetPlanRef>('/budget-plans/');
+// Full plan list — carries each plan's items, so it feeds both the month
+// selector and the edit form without a per-plan fetch.
+export function fetchBudgetPlans(): Promise<BudgetPlanDetail[]> {
+	return fetchAll<BudgetPlanDetail>('/budget-plans/');
+}
+
+export function createBudgetPlan(input: BudgetPlanInput): Promise<BudgetPlanDetail> {
+	return apiJson<BudgetPlanDetail>('/budget-plans/', {
+		method: 'POST',
+		body: JSON.stringify(input)
+	});
+}
+
+// PUT replaces the plan's item set wholesale — the whole-month edit semantics.
+export function updateBudgetPlan(id: number, input: BudgetPlanInput): Promise<BudgetPlanDetail> {
+	return apiJson<BudgetPlanDetail>(`/budget-plans/${id}/`, {
+		method: 'PUT',
+		body: JSON.stringify(input)
+	});
+}
+
+export function deleteBudgetPlan(id: number): Promise<void> {
+	return apiJson<void>(`/budget-plans/${id}/`, { method: 'DELETE' });
 }
 
 // Plan-vs-actual for one plan.

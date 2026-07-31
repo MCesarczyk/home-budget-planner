@@ -4,7 +4,7 @@ import { page } from 'vitest/browser';
 import { ApiError } from '$lib/api/client';
 import { auth } from '$lib/auth/auth.store.svelte';
 import * as budgetsApi from '$lib/budgets/api';
-import type { BudgetPlanRef, BudgetProgressReport } from '$lib/budgets/types';
+import type { BudgetPlanDetail, BudgetProgressReport } from '$lib/budgets/types';
 import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
@@ -12,17 +12,26 @@ vi.mock('$app/paths', () => ({ resolve: (p: string) => p }));
 vi.mock('$lib/budgets/api', () => ({
 	fetchBudgetPlans: vi.fn(),
 	fetchBudgetProgress: vi.fn(),
-	fetchCurrentBudgetProgress: vi.fn()
+	fetchCurrentBudgetProgress: vi.fn(),
+	createBudgetPlan: vi.fn(),
+	updateBudgetPlan: vi.fn(),
+	deleteBudgetPlan: vi.fn()
+}));
+// The plan modal loads the subcategory picker when opened.
+vi.mock('$lib/transactions/api', () => ({
+	fetchCategories: vi.fn().mockResolvedValue([]),
+	fetchSubcategories: vi.fn().mockResolvedValue([])
 }));
 
 const fetchBudgetPlans = vi.mocked(budgetsApi.fetchBudgetPlans);
 const fetchBudgetProgress = vi.mocked(budgetsApi.fetchBudgetProgress);
 const fetchCurrentBudgetProgress = vi.mocked(budgetsApi.fetchCurrentBudgetProgress);
 
-const plans: BudgetPlanRef[] = [
-	{ id: 5, month: '2023-12-01' },
-	{ id: 4, month: '2023-11-01' }
-];
+function makePlan(id: number, month: string): BudgetPlanDetail {
+	return { id, month, planned_income: '0.00', planned_expense: '0.00', items: [] };
+}
+
+const plans: BudgetPlanDetail[] = [makePlan(5, '2023-12-01'), makePlan(4, '2023-11-01')];
 
 function makeReport(id: number, month: string, catName: string): BudgetProgressReport {
 	return {
@@ -91,5 +100,21 @@ describe('budget page', () => {
 		fetchCurrentBudgetProgress.mockRejectedValue(new ApiError(500, 'Budget boom.'));
 		render(Page);
 		await expect.element(page.getByText('Budget boom.')).toBeInTheDocument();
+	});
+
+	it('opens the create modal from "New plan"', async () => {
+		render(Page);
+		await expect.element(page.getByText('December Housing')).toBeInTheDocument();
+		await page.getByRole('button', { name: 'New plan' }).click();
+		await expect.element(page.getByRole('dialog', { name: 'New budget plan' })).toBeInTheDocument();
+	});
+
+	it('opens the edit modal for the selected month', async () => {
+		render(Page);
+		await expect.element(page.getByText('December Housing')).toBeInTheDocument();
+		await page.getByRole('button', { name: 'Edit' }).click();
+		await expect
+			.element(page.getByRole('dialog', { name: 'Edit budget plan' }))
+			.toBeInTheDocument();
 	});
 });
