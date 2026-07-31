@@ -29,6 +29,13 @@
 	let deleting = $state(false);
 	let error = $state('');
 
+	// Clear any error left over from a previous session each time the modal opens
+	// (the form re-mounts on open, resetting its own validation, but this
+	// modal-level error state would otherwise persist).
+	$effect(() => {
+		if (open) error = '';
+	});
+
 	// Fetch the subcategory picker lazily the first time the modal is opened.
 	$effect(() => {
 		if (open && !loaded) loadOptions();

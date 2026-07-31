@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import { ApiError } from '$lib/api/client';
 import BudgetPlanModal from './BudgetPlanModal.svelte';
 import * as budgetsApi from './api';
 import * as txApi from '$lib/transactions/api';
@@ -102,5 +103,20 @@ describe('BudgetPlanModal', () => {
 
 		await vi.waitFor(() => expect(deleteBudgetPlan).toHaveBeenCalledWith(5));
 		expect(ondeleted).toHaveBeenCalled();
+	});
+
+	it('clears a previous error when reopened', async () => {
+		updateBudgetPlan.mockRejectedValue(new ApiError(400, 'Save failed.'));
+		const props = { open: true, plan, onclose: vi.fn(), onsaved: vi.fn(), ondeleted: vi.fn() };
+		const { rerender } = render(BudgetPlanModal, props);
+
+		// Trigger a save error.
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect.element(page.getByText('Save failed.')).toBeInTheDocument();
+
+		// Close, then reopen — the stale error must be gone.
+		await rerender({ ...props, open: false });
+		await rerender({ ...props, open: true });
+		await expect.element(page.getByText('Save failed.')).not.toBeInTheDocument();
 	});
 });
