@@ -3,11 +3,13 @@
 Design for normalizing the flat `transactions` table (see `transactions_sample.sql`)
 into related `categories`, `subcategories`, and `transactions` tables.
 
-Status: **v1, v2 & v3 implemented** (models + migrations). v1 covers `categories`,
+Status: **v1, v2, v3 & v4 implemented** (models + migrations). v1 covers `categories`,
 `subcategories`, `transactions`; v2 adds the `wallets` app (`accounts`,
 `purposes`), transaction account legs, and transfers — see
 ["v2 — Accounts & transfers"](#v2--accounts--transfers); v3 adds **liabilities**
-(debts as negative-balance accounts) — see ["v3 — Liabilities"](#v3--liabilities-debts).
+(debts as negative-balance accounts) — see ["v3 — Liabilities"](#v3--liabilities-debts);
+v4 adds the `budgets` app (**monthly budget plans**) — see
+["v4 — Budget plans"](#v4--budget-plans).
 
 ## Background
 
@@ -382,3 +384,101 @@ into `assets` / `liabilities` with subtotals, where
   of scope.
 - **Payoff targets.** Purposes carry a `target_amount` for savings goals; there is
   no analogous "payoff by" target on liabilities yet.
+
+---
+
+# v4 — Budget plans
+
+Status: **implemented.** New `budgets` app (`BudgetPlan`, `BudgetItem`) exposed at
+`GET/POST/PUT/PATCH/DELETE /api/v1/budget-plans/`. A plan holds one planned amount
+per subcategory for a given month.
+
+v4 lets the user set a **monthly budget**: for the current month, a planned amount
+against each subcategory. Plans are stored and fetched from the budget-plans
+endpoint. This is the *plan* side; comparing it to actual transactions
+(plan-vs-actual reporting) is a natural follow-up but not part of v4.
+
+## The core insight
+
+A budget is planned amounts at the **same grain transactions are categorized** —
+the subcategory. Budgeting per subcategory (rather than per category) means a plan
+line joins directly to `Transaction.subcategory`, so plan-vs-actual is a plain
+group-by, and category-level planned totals roll up for free (as the spending
+report already does). A subcategory's `category.kind` says whether a line is
+planned income or expense, so no separate kind is stored on the budget.
+
+## Proposed schema
+
+```mermaid
+erDiagram
+    budget_plans ||--o{ budget_items : "has"
+    subcategories ||--o{ budget_items : "plans"
+
+    budget_plans {
+        int   id PK
+        date  month UK "first day of the month; one plan per month"
+    }
+
+    budget_items {
+        int      id PK
+        int      budget_plan_id FK
+        int      subcategory_id FK
+        numeric  amount "NUMERIC(12,2), > 0"
+    }
+```
+
+### New table: `budget_plans`
+
+- `id` PK
+- `month` — `DATE`, **unique**, normalized to the first day of the month. One plan
+  per calendar month; the day component is collapsed to the 1st in the serializer
+  so any day in the month resolves to that month's plan.
+
+### New table: `budget_items`
+
+- `id` PK
+- `budget_plan_id` FK → budget_plans, `ON DELETE CASCADE` — items are owned by the
+  plan and have no meaning without it.
+- `subcategory_id` FK → subcategories, `ON DELETE PROTECT` — a subcategory that is
+  referenced by a plan cannot be deleted out from under it.
+- `amount` — `NUMERIC(12,2)`, a **positive magnitude** (same convention as
+  `transactions.amount`; direction is implied by the subcategory's category kind).
+- Unique on `(budget_plan_id, subcategory_id)` — at most one line per subcategory
+  per plan.
+
+## Constraints
+
+DB-level `CHECK` / unique (single-table, structural):
+
+1. `budget_plans.month` unique.
+2. `budget_items(budget_plan_id, subcategory_id)` unique.
+3. `amount > 0`.
+
+Application-level (serializer):
+
+- `month` normalized to the first of the month, with the uniqueness check run on
+  the **normalized** value (not the raw day the request carried).
+- No duplicate subcategory within a single submitted plan.
+
+## API shape
+
+- **Write** (`POST` / `PUT` / `PATCH`) accepts the plan and its items in one
+  payload; items are set by subcategory id. `PUT` replaces the item set wholesale;
+  `PATCH` without `items` leaves them untouched. Both run in a transaction.
+- **Read** expands each item's subcategory (with its category, mirroring the
+  transaction read shape) and reports `planned_income` / `planned_expense` totals —
+  split by kind, since summing income and expense magnitudes together is
+  meaningless.
+- **List** supports `?month=YYYY-MM` (or a full `YYYY-MM-DD`) to fetch a given
+  month's plan.
+
+## Deferred (not in v4)
+
+- **Plan-vs-actual reporting.** Comparing each planned line to the summed actual
+  transactions for that subcategory and month is the obvious next report; v4 only
+  stores and serves the plan.
+- **Category-level (lump-sum) budgeting.** Every line is a subcategory; budgeting a
+  whole category means adding a line per subcategory. A category-grain line is only
+  worth adding if the subcategory grain proves too fine in practice.
+- **Copy / carry-forward.** Seeding next month's plan from this month's is a UI/
+  convenience concern, not modeled here.

@@ -23,6 +23,7 @@ from drf_spectacular.views import (
 )
 from rest_framework.routers import DefaultRouter
 
+from budgets.views import BudgetPlanViewSet
 from config.health import HealthView
 from transactions.views import (
     CategoryViewSet,
@@ -37,6 +38,7 @@ router.register("accounts", AccountViewSet)
 router.register("categories", CategoryViewSet)
 router.register("subcategories", SubcategoryViewSet)
 router.register("transactions", TransactionViewSet, basename="transaction")
+router.register("budget-plans", BudgetPlanViewSet, basename="budget-plan")
 
 # All API surface lives under a version prefix (URL-path versioning). A future
 # breaking revision mounts a parallel `api/v2/` include; `api/v1/` keeps working.

@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "wallets",
     "transactions",
     "reports",
+    "budgets",
 ]
 
 REST_FRAMEWORK = {
