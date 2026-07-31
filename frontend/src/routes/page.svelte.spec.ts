@@ -7,11 +7,43 @@ import Page from './+page.svelte';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 vi.mock('$app/paths', () => ({ resolve: (p: string) => p }));
+vi.mock('$lib/accounts/api', () => ({
+	fetchAccounts: vi.fn(),
+	fetchPurposeOptions: vi.fn(),
+	createAccount: vi.fn(),
+	updateAccount: vi.fn()
+}));
+vi.mock('$lib/purposes/api', () => ({
+	fetchPurposeList: vi.fn(),
+	createPurpose: vi.fn(),
+	updatePurpose: vi.fn(),
+	deletePurpose: vi.fn()
+}));
+vi.mock('$lib/categories/api', () => ({
+	fetchCategoryList: vi.fn(),
+	createCategory: vi.fn(),
+	updateCategory: vi.fn(),
+	deleteCategory: vi.fn()
+}));
+vi.mock('$lib/subcategories/api', () => ({
+	fetchSubcategoryList: vi.fn(),
+	createSubcategory: vi.fn(),
+	updateSubcategory: vi.fn(),
+	deleteSubcategory: vi.fn()
+}));
 
 const goto_ = vi.mocked(goto);
 
-beforeEach(() => {
+beforeEach(async () => {
 	vi.clearAllMocks();
+	const accountsApi = await import('$lib/accounts/api');
+	vi.mocked(accountsApi.fetchAccounts).mockResolvedValue([]);
+	const purposesApi = await import('$lib/purposes/api');
+	vi.mocked(purposesApi.fetchPurposeList).mockResolvedValue([]);
+	const categoriesApi = await import('$lib/categories/api');
+	vi.mocked(categoriesApi.fetchCategoryList).mockResolvedValue([]);
+	const subcategoriesApi = await import('$lib/subcategories/api');
+	vi.mocked(subcategoriesApi.fetchSubcategoryList).mockResolvedValue([]);
 	auth.user = null;
 	auth.loading = false;
 });
@@ -28,7 +60,7 @@ describe('home page', () => {
 		auth.user = { id: 1, username: 'ada', email: 'a@b.c', is_staff: false };
 		render(Page);
 
-		await expect.element(page.getByText('ada')).toBeInTheDocument();
+		await expect.element(page.getByText('Signed in as ada')).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
 	});
 

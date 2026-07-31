@@ -16,3 +16,16 @@ export interface PurposeProgress {
 export interface PurposesReport {
 	purposes: PurposeProgress[];
 }
+
+export interface Purpose {
+	id: number;
+	name: string;
+	description: string;
+	target_amount: string | null;
+}
+
+export interface PurposeInput {
+	name: string;
+	description: string;
+	target_amount: string | null;
+}
