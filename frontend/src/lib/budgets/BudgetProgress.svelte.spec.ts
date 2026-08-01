@@ -110,10 +110,13 @@ describe('BudgetProgress', () => {
 	});
 
 	it('flags over-budget remaining and unbudgeted spend', async () => {
-		render(BudgetProgress, { report, loading: false, error: '' });
+		const { container } = render(BudgetProgress, { report, loading: false, error: '' });
 		await expect.element(page.getByText('90.00 over')).toBeInTheDocument();
 		await expect.element(page.getByText('85.00 over')).toBeInTheDocument();
 		await expect.element(page.getByText('unbudgeted').first()).toBeInTheDocument();
+		// Unbudgeted spend is alarming, so it's flagged orange (a filled bar), not gray.
+		expect(container.querySelector('.bg-orange-500')).not.toBeNull();
+		expect(container.querySelector('.text-orange-700')).not.toBeNull();
 	});
 
 	it('renders the empty state when there is no plan', async () => {

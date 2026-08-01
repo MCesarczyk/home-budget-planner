@@ -40,21 +40,19 @@
 	}
 
 	function barWidth(progress: number | null): string {
-		if (progress === null) return '0%';
+		if (progress === null) return '100%';
 		return `${Math.min(100, Math.max(0, progress * 100))}%`;
 	}
 
-	// Expense within budget reads positive (emerald); over budget is a warning
-	// (red). Income fills toward its planned target (indigo). Unbudgeted spend has
-	// no plan to measure against, so it stays neutral.
 	function barColor(kind: 'income' | 'expense', progress: number | null): string {
-		if (progress === null) return 'bg-slate-400 dark:bg-slate-500';
+		if (progress === null) return 'bg-orange-500';
 		if (kind === 'expense') return progress > 1 ? 'bg-red-500' : 'bg-emerald-500';
 		return 'bg-indigo-500';
 	}
 
 	function pctClass(kind: 'income' | 'expense', progress: number | null): string {
-		if (progress !== null && kind === 'expense' && progress > 1) {
+		if (progress === null) return 'text-orange-600 dark:text-orange-400';
+		if (kind === 'expense' && progress > 1) {
 			return 'text-red-600 dark:text-red-400';
 		}
 		return 'text-slate-500 dark:text-slate-400';
@@ -136,12 +134,16 @@
 			{name}
 			{#if unbudgeted}
 				<span
-					class="ml-1 rounded-sm bg-slate-100 px-1 py-0.5 text-[10px] font-normal text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+					class="ml-1 rounded-sm bg-orange-100 px-1 py-0.5 text-[10px] font-normal text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
 					>unbudgeted</span
 				>
 			{/if}
 		</span>
-		<span class="text-slate-600 tabular-nums dark:text-slate-300">
+		<span
+			class="tabular-nums {unbudgeted
+				? 'font-medium text-orange-700 dark:text-orange-300'
+				: 'text-slate-600 dark:text-slate-300'}"
+		>
 			{actual}{#if !unbudgeted}<span class="text-slate-400 dark:text-slate-500">
 					/ {planned}</span
 				>{/if}
