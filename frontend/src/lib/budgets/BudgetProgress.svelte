@@ -286,21 +286,21 @@
 
 		<div class="space-y-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
 			{@render meter(
-				'expense',
-				'Expenses',
-				report.totals.expense.planned,
-				report.totals.expense.actual,
-				report.totals.expense.remaining,
-				report.totals.expense.progress,
-				true
-			)}
-			{@render meter(
 				'income',
 				'Income',
 				report.totals.income.planned,
 				report.totals.income.actual,
 				report.totals.income.remaining,
 				report.totals.income.progress,
+				true
+			)}
+			{@render meter(
+				'expense',
+				'Expenses',
+				report.totals.expense.planned,
+				report.totals.expense.actual,
+				report.totals.expense.remaining,
+				report.totals.expense.progress,
 				true
 			)}
 		</div>
@@ -310,8 +310,8 @@
 				This plan has no lines.
 			</p>
 		{:else}
-			{@render section('Expenses', expenseCats)}
 			{@render section('Income', incomeCats)}
+			{@render section('Expenses', expenseCats)}
 		{/if}
 	{/if}
 </div>

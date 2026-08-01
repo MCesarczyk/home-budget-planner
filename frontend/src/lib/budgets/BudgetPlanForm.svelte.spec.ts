@@ -18,8 +18,14 @@ const subcategories: Subcategory[] = [
 function setup(props: Record<string, unknown> = {}) {
 	const onsubmit = vi.fn();
 	const oncancel = vi.fn();
-	render(BudgetPlanForm, { categories, subcategories, onsubmit, oncancel, ...props });
-	return { onsubmit, oncancel };
+	const { container } = render(BudgetPlanForm, {
+		categories,
+		subcategories,
+		onsubmit,
+		oncancel,
+		...props
+	});
+	return { onsubmit, oncancel, container };
 }
 
 describe('BudgetPlanForm', () => {
@@ -32,6 +38,15 @@ describe('BudgetPlanForm', () => {
 		await expect
 			.element(page.getByRole('checkbox', { name: 'Include Primary Job' }))
 			.toBeInTheDocument();
+	});
+
+	it('groups the income section before expenses', async () => {
+		const { container } = setup();
+		await expect
+			.element(page.getByRole('checkbox', { name: 'Include Primary Job' }))
+			.toBeInTheDocument();
+		const headers = [...container.querySelectorAll('h3')].map((h) => h.textContent?.trim());
+		expect(headers).toEqual(['Income', 'Expenses']);
 	});
 
 	it('includes only checked lines in the payload', async () => {

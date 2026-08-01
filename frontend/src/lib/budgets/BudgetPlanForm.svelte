@@ -70,10 +70,14 @@
 			.map((c) => ({
 				id: c.id,
 				name: c.name,
+				kind: c.kind,
 				subs: subcategories.filter((s) => s.category === c.id)
 			}))
 			.filter((g) => g.subs.length > 0)
 	);
+	// Income categories are listed before expenses, each kind as its own section.
+	let incomeGroups = $derived(groups.filter((g) => g.kind === 'income'));
+	let expenseGroups = $derived(groups.filter((g) => g.kind === 'expense'));
 
 	let includedCount = $derived(Object.values(selection).filter((l) => l.included).length);
 
@@ -105,6 +109,61 @@
 	}
 </script>
 
+{#snippet groupBlock(group: { id: number; name: string; subs: Subcategory[] })}
+	<div
+		class="border-b border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/60"
+	>
+		<h4 class="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+			{group.name}
+		</h4>
+	</div>
+	<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+		{#each group.subs as sub (sub.id)}
+			{@const line = selection[sub.id]}
+			<li class="flex items-center gap-3 px-3 py-2">
+				<input
+					type="checkbox"
+					aria-label="Include {sub.name}"
+					bind:checked={line.included}
+					class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-700"
+				/>
+				<span
+					class="flex-1 text-sm {line.included
+						? 'text-slate-800 dark:text-slate-200'
+						: 'text-slate-400 dark:text-slate-500'}"
+				>
+					{sub.name}
+				</span>
+				<input
+					type="number"
+					step="0.01"
+					min="0"
+					aria-label="Amount for {sub.name}"
+					bind:value={line.amount}
+					disabled={!line.included}
+					placeholder="0.00"
+					class="{fieldClass} w-28 disabled:opacity-40"
+				/>
+			</li>
+		{/each}
+	</ul>
+{/snippet}
+
+{#snippet kindSection(title: string, sections: { id: number; name: string; subs: Subcategory[] }[])}
+	{#if sections.length > 0}
+		<div
+			class="sticky top-0 z-10 border-b border-slate-200 bg-slate-100 px-3 py-2 dark:border-slate-800 dark:bg-slate-800"
+		>
+			<h3 class="text-xs font-bold tracking-wide text-slate-600 uppercase dark:text-slate-300">
+				{title}
+			</h3>
+		</div>
+		{#each sections as group (group.id)}
+			{@render groupBlock(group)}
+		{/each}
+	{/if}
+{/snippet}
+
 <form onsubmit={handleSubmit} class="space-y-4">
 	<div>
 		<label class={labelClass} for="budget-month">Month</label>
@@ -123,47 +182,8 @@
 			<div
 				class="scrollbar-thin overflow-y-auto rounded-md ring-1 ring-slate-200 dark:ring-slate-800"
 			>
-				{#each groups as group (group.id)}
-					<div
-						class="sticky top-0 border-b border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/60"
-					>
-						<h3
-							class="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400"
-						>
-							{group.name}
-						</h3>
-					</div>
-					<ul class="divide-y divide-slate-100 dark:divide-slate-800">
-						{#each group.subs as sub (sub.id)}
-							{@const line = selection[sub.id]}
-							<li class="flex items-center gap-3 px-3 py-2">
-								<input
-									type="checkbox"
-									aria-label="Include {sub.name}"
-									bind:checked={line.included}
-									class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-700"
-								/>
-								<span
-									class="flex-1 text-sm {line.included
-										? 'text-slate-800 dark:text-slate-200'
-										: 'text-slate-400 dark:text-slate-500'}"
-								>
-									{sub.name}
-								</span>
-								<input
-									type="number"
-									step="0.01"
-									min="0"
-									aria-label="Amount for {sub.name}"
-									bind:value={line.amount}
-									disabled={!line.included}
-									placeholder="0.00"
-									class="{fieldClass} w-28 disabled:opacity-40"
-								/>
-							</li>
-						{/each}
-					</ul>
-				{/each}
+				{@render kindSection('Income', incomeGroups)}
+				{@render kindSection('Expenses', expenseGroups)}
 			</div>
 		{/if}
 	</div>

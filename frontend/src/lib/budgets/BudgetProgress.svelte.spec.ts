@@ -90,6 +90,13 @@ describe('BudgetProgress', () => {
 		await expect.element(page.getByText('Salary & Wages')).toBeInTheDocument();
 	});
 
+	it('shows the income section before expenses', async () => {
+		const { container } = render(BudgetProgress, { report, loading: false, error: '' });
+		await expect.element(page.getByText('Salary & Wages')).toBeInTheDocument();
+		const headers = [...container.querySelectorAll('h3')].map((h) => h.textContent?.trim());
+		expect(headers).toEqual(['Income', 'Expenses']);
+	});
+
 	it('shows progress percentages, including over 100% when over budget', async () => {
 		render(BudgetProgress, { report, loading: false, error: '' });
 		await expect.element(page.getByText('105%')).toBeInTheDocument(); // Housing 1.0523
