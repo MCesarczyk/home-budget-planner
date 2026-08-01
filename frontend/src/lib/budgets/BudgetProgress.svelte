@@ -125,7 +125,8 @@
 )}
 	{@const unbudgeted = isUnbudgeted(planned)}
 	{@const note = remainingNote(kind, planned, remaining)}
-	<div class="flex items-baseline justify-between text-xs">
+	<div class="flex items-baseline justify-between text-sm px-2">
+	<div>
 		<span
 			class={strong
 				? 'font-semibold text-slate-800 dark:text-slate-200'
@@ -139,30 +140,33 @@
 				>
 			{/if}
 		</span>
+	</div>
+	<div class="flex items-baseline gap-2">
 		<span
 			class="tabular-nums {unbudgeted
 				? 'font-medium text-orange-700 dark:text-orange-300'
 				: 'text-slate-600 dark:text-slate-300'}"
 		>
 			{actual}{#if !unbudgeted}<span class="text-slate-400 dark:text-slate-500">
-					/ {planned}</span
+					/{planned}</span
 				>{/if}
 		</span>
+		<span class="text-right text-xs tabular-nums {pctClass(kind, progress)}"
+			>{pctLabel(progress)}</span
+		>
+   	    {#if note}
+            <p class="text-right text-xs tabular-nums {note.cls}">{note.text}</p>
+        {/if}
 	</div>
-	<div class="mt-1.5 flex items-center gap-2">
-		<div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+	</div>
+	<div class="-mt-6 flex items-center gap-2">
+		<div class="h-6 flex-1 overflow-hidden bg-slate-100 dark:bg-slate-800 opacity-20">
 			<div
-				class="h-full rounded-full {barColor(kind, progress)}"
+				class="h-full {barColor(kind, progress)}"
 				style="width: {barWidth(progress)}"
 			></div>
 		</div>
-		<span class="w-11 text-right text-xs tabular-nums {pctClass(kind, progress)}"
-			>{pctLabel(progress)}</span
-		>
 	</div>
-	{#if note}
-		<p class="mt-0.5 text-right text-[11px] tabular-nums {note.cls}">{note.text}</p>
-	{/if}
 {/snippet}
 
 {#snippet categoryBlock(cat: ProgressCategory)}
@@ -284,7 +288,10 @@
 			</div>
 		</div>
 
-		<div class="space-y-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+		<div class="space-y-1 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+			<h3 class="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+			Summary
+			</h3>
 			{@render meter(
 				'income',
 				'Income',
