@@ -23,10 +23,22 @@ function setup(props: Record<string, unknown> = {}) {
 }
 
 describe('BudgetPlanForm', () => {
-	it('builds a create payload from the filled lines', async () => {
+	it('lists every subcategory with a checkbox and amount', async () => {
+		setup();
+		await expect.element(page.getByRole('checkbox', { name: 'Include Rent' })).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('checkbox', { name: 'Include Electricity' }))
+			.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('checkbox', { name: 'Include Primary Job' }))
+			.toBeInTheDocument();
+	});
+
+	it('includes only checked lines in the payload', async () => {
 		const { onsubmit } = setup();
-		await page.getByRole('combobox', { name: 'Subcategory for line 1' }).selectOptions('6');
-		await page.getByRole('spinbutton', { name: 'Amount for line 1' }).fill('1500');
+		await page.getByRole('checkbox', { name: 'Include Rent' }).click();
+		await page.getByRole('spinbutton', { name: 'Amount for Rent' }).fill('1500');
+		// Electricity is left unchecked and must not appear in the payload.
 		await page.getByRole('button', { name: 'Save' }).click();
 
 		expect(onsubmit).toHaveBeenCalledWith(
@@ -37,46 +49,26 @@ describe('BudgetPlanForm', () => {
 		);
 	});
 
-	it('adds and removes lines', async () => {
+	it("disables an unchecked line's amount until it is included", async () => {
 		setup();
-		await page.getByRole('button', { name: '+ Add line' }).click();
-		await expect
-			.element(page.getByRole('spinbutton', { name: 'Amount for line 2' }))
-			.toBeInTheDocument();
-		await page.getByRole('button', { name: 'Remove line 2' }).click();
-		await expect
-			.element(page.getByRole('spinbutton', { name: 'Amount for line 2' }))
-			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('spinbutton', { name: 'Amount for Rent' })).toBeDisabled();
+		await page.getByRole('checkbox', { name: 'Include Rent' }).click();
+		await expect.element(page.getByRole('spinbutton', { name: 'Amount for Rent' })).toBeEnabled();
 	});
 
-	it('rejects a duplicate subcategory', async () => {
+	it('rejects an included line with no positive amount', async () => {
 		const { onsubmit } = setup();
-		await page.getByRole('combobox', { name: 'Subcategory for line 1' }).selectOptions('6');
-		await page.getByRole('spinbutton', { name: 'Amount for line 1' }).fill('100');
-		await page.getByRole('button', { name: '+ Add line' }).click();
-		await page.getByRole('combobox', { name: 'Subcategory for line 2' }).selectOptions('6');
-		await page.getByRole('spinbutton', { name: 'Amount for line 2' }).fill('200');
+		await page.getByRole('checkbox', { name: 'Include Rent' }).click();
+		// Leave the amount blank.
 		await page.getByRole('button', { name: 'Save' }).click();
 
 		await expect
-			.element(page.getByText('Each subcategory can appear only once.'))
+			.element(page.getByText('Every included line needs an amount greater than 0.'))
 			.toBeInTheDocument();
 		expect(onsubmit).not.toHaveBeenCalled();
 	});
 
-	it('rejects a non-positive amount', async () => {
-		const { onsubmit } = setup();
-		await page.getByRole('combobox', { name: 'Subcategory for line 1' }).selectOptions('6');
-		await page.getByRole('spinbutton', { name: 'Amount for line 1' }).fill('0');
-		await page.getByRole('button', { name: 'Save' }).click();
-
-		await expect
-			.element(page.getByText('Every amount must be greater than 0.'))
-			.toBeInTheDocument();
-		expect(onsubmit).not.toHaveBeenCalled();
-	});
-
-	it('seeds lines and a delete action when editing', async () => {
+	it('pre-checks the plan lines and offers delete when editing', async () => {
 		const initial: BudgetPlanDetail = {
 			id: 5,
 			month: '2023-12-01',
@@ -97,13 +89,17 @@ describe('BudgetPlanForm', () => {
 		const ondelete = vi.fn();
 		setup({ initial, ondelete });
 
+		await expect.element(page.getByRole('checkbox', { name: 'Include Rent' })).toBeChecked();
 		await expect
-			.element(page.getByRole('combobox', { name: 'Subcategory for line 1' }))
-			.toHaveValue('6');
+			.element(page.getByRole('checkbox', { name: 'Include Electricity' }))
+			.not.toBeChecked();
+		await expect
+			.element(page.getByRole('spinbutton', { name: 'Amount for Rent' }))
+			.toHaveValue(1500);
 		await expect.element(page.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
 	});
 
-	it('inherits lines from a template and advances the month when creating', async () => {
+	it('inherits the template lines and advances the month when creating', async () => {
 		const template: BudgetPlanDetail = {
 			id: 9,
 			month: '2023-11-01',
@@ -123,15 +119,8 @@ describe('BudgetPlanForm', () => {
 		};
 		const { onsubmit } = setup({ template });
 
-		// Seeded from the template: the Rent line + amount, month advanced to next.
-		await expect
-			.element(page.getByRole('combobox', { name: 'Subcategory for line 1' }))
-			.toHaveValue('6');
-		await expect
-			.element(page.getByRole('spinbutton', { name: 'Amount for line 1' }))
-			.toHaveValue(1500);
+		await expect.element(page.getByRole('checkbox', { name: 'Include Rent' })).toBeChecked();
 		await expect.element(page.getByLabelText('Month')).toHaveValue('2023-12');
-		// No delete action — it is still a create.
 		await expect.element(page.getByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
 
 		await page.getByRole('button', { name: 'Save' }).click();

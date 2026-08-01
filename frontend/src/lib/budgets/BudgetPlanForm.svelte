@@ -27,38 +27,44 @@
 		ondelete?: () => void;
 	} = $props();
 
-	interface Row {
-		key: number;
-		subcategoryId: string;
+	interface Line {
+		included: boolean;
 		amount: number | null;
 	}
-	let uid = 0;
-	function makeRow(subcategoryId = '', amount: number | null = null): Row {
-		return { key: uid++, subcategoryId, amount };
-	}
 
-	// Seed field state once. Editing: seed from the plan itself. Creating with a
-	// template (the previous plan): inherit its lines and advance to the next
-	// month. Otherwise: a blank row at the current month.
+	// Seed once. Every subcategory gets a row; the ones present in the plan being
+	// edited (or inherited from a template) start checked with their amount. When
+	// creating from a template the month advances to the next one.
 	// input type="month" wants YYYY-MM; the stored month is YYYY-MM-DD.
 	function seed() {
 		const source = initial ?? template;
-		if (source) {
-			return {
-				month: initial ? source.month.slice(0, 7) : shiftMonth(source.month.slice(0, 7), 1),
-				rows: source.items.map((it) => makeRow(String(it.subcategory.id), Number(it.amount)))
+		const amounts: Record<number, string> = {};
+		if (source) for (const it of source.items) amounts[it.subcategory.id] = it.amount;
+
+		const selection: Record<number, Line> = {};
+		for (const s of subcategories) {
+			const amount = amounts[s.id];
+			selection[s.id] = {
+				included: amount !== undefined,
+				amount: amount !== undefined ? Number(amount) : null
 			};
 		}
-		return { month: currentMonth(), rows: [makeRow()] };
+
+		const month = source
+			? initial
+				? source.month.slice(0, 7)
+				: shiftMonth(source.month.slice(0, 7), 1)
+			: currentMonth();
+
+		return { month, selection };
 	}
 	const seeded = seed();
 
 	let month = $state(seeded.month);
-	let rows = $state<Row[]>(seeded.rows.length ? seeded.rows : [makeRow()]);
+	let selection = $state<Record<number, Line>>(seeded.selection);
 	let validationError = $state('');
 	let confirmingDelete = $state(false);
 
-	// Subcategories grouped under their category, for a grouped <select>.
 	let groups = $derived(
 		categories
 			.map((c) => ({
@@ -69,12 +75,7 @@
 			.filter((g) => g.subs.length > 0)
 	);
 
-	function addRow() {
-		rows = [...rows, makeRow()];
-	}
-	function removeRow(key: number) {
-		rows = rows.filter((r) => r.key !== key);
-	}
+	let includedCount = $derived(Object.values(selection).filter((l) => l.included).length);
 
 	const fieldClass =
 		'w-full rounded-md border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100';
@@ -90,25 +91,14 @@
 		}
 
 		const items: { subcategory: number; amount: string }[] = [];
-		const seen: number[] = [];
-		for (const r of rows) {
-			// Skip fully-blank rows so an accidental empty line isn't an error.
-			if (!r.subcategoryId && r.amount == null) continue;
-			if (!r.subcategoryId) {
-				validationError = 'Every line needs a subcategory.';
+		for (const s of subcategories) {
+			const line = selection[s.id];
+			if (!line?.included) continue;
+			if (!(Number(line.amount) > 0)) {
+				validationError = 'Every included line needs an amount greater than 0.';
 				return;
 			}
-			if (!(Number(r.amount) > 0)) {
-				validationError = 'Every amount must be greater than 0.';
-				return;
-			}
-			const sid = Number(r.subcategoryId);
-			if (seen.includes(sid)) {
-				validationError = 'Each subcategory can appear only once.';
-				return;
-			}
-			seen.push(sid);
-			items.push({ subcategory: sid, amount: String(r.amount) });
+			items.push({ subcategory: s.id, amount: String(line.amount) });
 		}
 
 		onsubmit({ month: `${month}-01`, items });
@@ -124,57 +114,57 @@
 	<div>
 		<div class="mb-1 flex items-center justify-between">
 			<span class={labelClass}>Lines</span>
-			<button
-				type="button"
-				onclick={addRow}
-				class="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-			>
-				+ Add line
-			</button>
+			<span class="text-xs text-slate-400 dark:text-slate-500">{includedCount} selected</span>
 		</div>
 
-		{#if rows.length === 0}
-			<p class="py-2 text-xs text-slate-400 dark:text-slate-500">
-				No lines yet — add one, or save an empty plan.
-			</p>
+		{#if groups.length === 0}
+			<p class="py-2 text-xs text-slate-400 dark:text-slate-500">No categories available.</p>
 		{:else}
-			<ul class="space-y-2">
-				{#each rows as row, i (row.key)}
-					<li class="grid grid-flow-col gap-2">
-						<select
-							aria-label="Subcategory for line {i + 1}"
-							bind:value={row.subcategoryId}
-							class="{fieldClass} flex-1"
+			<div
+				class="scrollbar-thin overflow-y-auto rounded-md ring-1 ring-slate-200 dark:ring-slate-800"
+			>
+				{#each groups as group (group.id)}
+					<div
+						class="sticky top-0 border-b border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-800/60"
+					>
+						<h3
+							class="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400"
 						>
-							<option value="">Select subcategory…</option>
-							{#each groups as group (group.id)}
-								<optgroup label={group.name}>
-									{#each group.subs as sub (sub.id)}
-										<option value={String(sub.id)}>{sub.name}</option>
-									{/each}
-								</optgroup>
-							{/each}
-						</select>
-						<input
-							type="number"
-							step="0.01"
-							min="0"
-							aria-label="Amount for line {i + 1}"
-							bind:value={row.amount}
-							placeholder="0.00"
-							class="{fieldClass} w-28"
-						/>
-						<button
-							type="button"
-							aria-label="Remove line {i + 1}"
-							onclick={() => removeRow(row.key)}
-							class="rounded-md px-2 py-2 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-red-400"
-						>
-							✕
-						</button>
-					</li>
+							{group.name}
+						</h3>
+					</div>
+					<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+						{#each group.subs as sub (sub.id)}
+							{@const line = selection[sub.id]}
+							<li class="flex items-center gap-3 px-3 py-2">
+								<input
+									type="checkbox"
+									aria-label="Include {sub.name}"
+									bind:checked={line.included}
+									class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-700"
+								/>
+								<span
+									class="flex-1 text-sm {line.included
+										? 'text-slate-800 dark:text-slate-200'
+										: 'text-slate-400 dark:text-slate-500'}"
+								>
+									{sub.name}
+								</span>
+								<input
+									type="number"
+									step="0.01"
+									min="0"
+									aria-label="Amount for {sub.name}"
+									bind:value={line.amount}
+									disabled={!line.included}
+									placeholder="0.00"
+									class="{fieldClass} w-28 disabled:opacity-40"
+								/>
+							</li>
+						{/each}
+					</ul>
 				{/each}
-			</ul>
+			</div>
 		{/if}
 	</div>
 

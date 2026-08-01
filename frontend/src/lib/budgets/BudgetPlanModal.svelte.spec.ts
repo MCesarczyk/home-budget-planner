@@ -61,8 +61,8 @@ describe('BudgetPlanModal', () => {
 			ondeleted: vi.fn()
 		});
 
-		await page.getByRole('combobox', { name: 'Subcategory for line 1' }).selectOptions('6');
-		await page.getByRole('spinbutton', { name: 'Amount for line 1' }).fill('1500');
+		await page.getByRole('checkbox', { name: 'Include Rent' }).click();
+		await page.getByRole('spinbutton', { name: 'Amount for Rent' }).fill('1500');
 		await page.getByRole('button', { name: 'Save' }).click();
 
 		await vi.waitFor(() => expect(createBudgetPlan).toHaveBeenCalled());
@@ -132,9 +132,7 @@ describe('BudgetPlanModal', () => {
 		});
 
 		await expect.element(page.getByRole('dialog', { name: 'New budget plan' })).toBeInTheDocument();
-		await expect
-			.element(page.getByRole('combobox', { name: 'Subcategory for line 1' }))
-			.toHaveValue('6');
+		await expect.element(page.getByRole('checkbox', { name: 'Include Rent' })).toBeChecked();
 
 		await page.getByRole('button', { name: 'Save' }).click();
 

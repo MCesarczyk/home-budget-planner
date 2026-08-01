@@ -84,16 +84,22 @@
 </script>
 
 <Modal {open} title={plan ? 'Edit budget plan' : 'New budget plan'} {onclose}>
-	<BudgetPlanForm
-		{categories}
-		{subcategories}
-		initial={plan}
-		template={plan ? null : template}
-		{submitting}
-		{deleting}
-		{error}
-		onsubmit={handleSubmit}
-		oncancel={onclose}
-		ondelete={plan ? handleDelete : undefined}
-	/>
+	{#if loaded}
+		<BudgetPlanForm
+			{categories}
+			{subcategories}
+			initial={plan}
+			template={plan ? null : template}
+			{submitting}
+			{deleting}
+			{error}
+			onsubmit={handleSubmit}
+			oncancel={onclose}
+			ondelete={plan ? handleDelete : undefined}
+		/>
+	{:else if error}
+		<p class="p-8 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
+	{:else}
+		<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+	{/if}
 </Modal>
