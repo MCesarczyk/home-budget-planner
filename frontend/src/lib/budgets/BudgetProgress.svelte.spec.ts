@@ -97,6 +97,18 @@ describe('BudgetProgress', () => {
 		await expect.element(page.getByText('45%').first()).toBeInTheDocument(); // Salary 0.453
 	});
 
+	it('summarises funds to distribute, income spent and monthly progress', async () => {
+		render(BudgetProgress, { report, loading: false, error: '' });
+		// Funds to be distributed = planned income − planned expense = 8200 − 1720.
+		await expect.element(page.getByText('Funds to be distributed')).toBeInTheDocument();
+		await expect.element(page.getByText('6480.00')).toBeInTheDocument();
+		// Income spent = actual expense / actual income = 1904.28 / 3714.67 ≈ 51%.
+		await expect.element(page.getByText('Percentage of income spent')).toBeInTheDocument();
+		await expect.element(page.getByText('51%')).toBeInTheDocument();
+		// The month (Dec 2023) is fully in the past → 100% elapsed.
+		await expect.element(page.getByText('Monthly progress percentage')).toBeInTheDocument();
+	});
+
 	it('flags over-budget remaining and unbudgeted spend', async () => {
 		render(BudgetProgress, { report, loading: false, error: '' });
 		await expect.element(page.getByText('90.00 over')).toBeInTheDocument();

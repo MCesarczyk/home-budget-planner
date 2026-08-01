@@ -82,6 +82,32 @@
 			: { text: `${abs} over`, cls: 'text-emerald-600 dark:text-emerald-400' };
 	}
 
+	function fundsToDistribute(r: BudgetProgressReport): number {
+		return Number(r.totals.income.planned) - Number(r.totals.expense.planned);
+	}
+
+	function incomeSpentPercent(r: BudgetProgressReport): number | null {
+		const income = Number(r.totals.income.actual);
+		if (income <= 0) return null;
+		return Math.round((Number(r.totals.expense.actual) / income) * 100);
+	}
+
+	function monthlyProgressPercent(iso: string): number {
+		const [y, m] = iso.split('-').map(Number);
+		const now = new Date();
+		const start = new Date(y, m - 1, 1);
+		const next = new Date(y, m, 1);
+		if (now >= next) return 100;
+		if (now < start) return 0;
+		const daysInMonth = new Date(y, m, 0).getDate();
+		return Math.round((now.getDate() / daysInMonth) * 100);
+	}
+
+	function clampPct(p: number | null): string {
+		if (p === null) return '0%';
+		return `${Math.min(100, Math.max(0, p))}%`;
+	}
+
 	let expenseCats = $derived<ProgressCategory[]>(
 		report?.categories.filter((c) => c.kind === 'expense') ?? []
 	);
@@ -194,6 +220,68 @@
 	{:else if !report}
 		<p class="p-8 text-center text-sm text-slate-500 dark:text-slate-400">No budget plan yet.</p>
 	{:else}
+		{@const funds = fundsToDistribute(report)}
+		{@const spent = incomeSpentPercent(report)}
+		{@const monthly = monthlyProgressPercent(report.month)}
+		<div
+			class="grid grid-cols-1 divide-y divide-slate-100 border-b border-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-slate-800 dark:border-slate-800"
+		>
+			<div class="px-4 py-3">
+				<p
+					class="text-[10px] font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500"
+				>
+					Funds to be distributed
+				</p>
+				<p
+					class="mt-1 text-lg font-bold tabular-nums {funds < 0
+						? 'text-red-600 dark:text-red-400'
+						: 'text-emerald-600 dark:text-emerald-400'}"
+				>
+					{funds.toFixed(2)}
+				</p>
+			</div>
+
+			<div class="px-4 py-3">
+				<p
+					class="text-[10px] font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500"
+				>
+					Percentage of income spent
+				</p>
+				<p
+					class="mt-1 text-lg font-bold tabular-nums {spent !== null && spent > 100
+						? 'text-red-600 dark:text-red-400'
+						: 'text-slate-800 dark:text-slate-100'}"
+				>
+					{spent === null ? '—' : `${spent}%`}
+				</p>
+				<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+					<div
+						class="h-full rounded-full {spent !== null && spent > 100
+							? 'bg-red-500'
+							: 'bg-indigo-500'}"
+						style="width: {clampPct(spent)}"
+					></div>
+				</div>
+			</div>
+
+			<div class="px-4 py-3">
+				<p
+					class="text-[10px] font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500"
+				>
+					Monthly progress percentage
+				</p>
+				<p class="mt-1 text-lg font-bold text-slate-800 tabular-nums dark:text-slate-100">
+					{monthly}%
+				</p>
+				<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+					<div
+						class="h-full rounded-full bg-slate-400 dark:bg-slate-500"
+						style="width: {monthly}%"
+					></div>
+				</div>
+			</div>
+		</div>
+
 		<div class="space-y-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
 			{@render meter(
 				'expense',
