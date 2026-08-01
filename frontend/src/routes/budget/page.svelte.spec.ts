@@ -5,9 +5,11 @@ import { ApiError } from '$lib/api/client';
 import { auth } from '$lib/auth/auth.store.svelte';
 import * as budgetsApi from '$lib/budgets/api';
 import type { BudgetPlanDetail, BudgetProgressReport } from '$lib/budgets/types';
+import { resetNav, setUrl } from './nav.mock.svelte';
 import Page from './+page.svelte';
 
-vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+vi.mock('$app/state', async () => ({ page: (await import('./nav.mock.svelte')).page }));
+vi.mock('$app/navigation', async () => ({ goto: (await import('./nav.mock.svelte')).goto }));
 vi.mock('$app/paths', () => ({ resolve: (p: string) => p }));
 vi.mock('$lib/budgets/api', () => ({
 	fetchBudgetPlans: vi.fn(),
@@ -58,6 +60,7 @@ function makeReport(id: number, month: string, catName: string): BudgetProgressR
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	resetNav();
 	fetchBudgetPlans.mockResolvedValue(plans);
 	fetchCurrentBudgetProgress.mockResolvedValue(makeReport(5, '2023-12-01', 'December Housing'));
 	fetchBudgetProgress.mockResolvedValue(makeReport(4, '2023-11-01', 'November Housing'));
@@ -87,6 +90,20 @@ describe('budget page', () => {
 
 		await expect.element(page.getByText('November Housing')).toBeInTheDocument();
 		expect(fetchBudgetProgress).toHaveBeenCalledWith(4);
+
+		const { page: navPage } = await import('./nav.mock.svelte');
+		await vi.waitFor(() => expect(navPage.url.searchParams.get('month')).toBe('2023-11'));
+	});
+
+	it('loads the month from the URL on deep link', async () => {
+		setUrl('/budget?month=2023-11');
+		render(Page);
+
+		await expect.element(page.getByText('November Housing')).toBeInTheDocument();
+		expect(fetchBudgetProgress).toHaveBeenCalledWith(4);
+		await expect
+			.element(page.getByRole('combobox', { name: 'Budget month' }))
+			.toHaveValue('4');
 	});
 
 	it('shows an empty state when no plan is in effect', async () => {

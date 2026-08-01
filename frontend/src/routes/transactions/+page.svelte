@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import { ApiError } from '$lib/api/client';
 	import {
@@ -26,12 +28,18 @@
 
 	type Mode = 'all' | 'month' | 'year';
 
-	let mode = $state<Mode>('month');
-	let month = $state(currentMonth());
-	let year = $state(currentYear());
-	let categoryId = $state('');
-	let subcategoryId = $state('');
-	let pageNum = $state(1);
+	let params = $derived(page.url.searchParams);
+	let mode = $derived<Mode>(
+		(['all', 'month', 'year'].includes(params.get('mode') ?? '')
+			? params.get('mode')
+			: 'month') as Mode
+	);
+	let month = $derived(params.get('month') || currentMonth());
+	let year = $derived(params.get('year') || currentYear());
+	let categoryId = $derived(params.get('category') ?? '');
+	let subcategoryId = $derived(params.get('subcategory') ?? '');
+	let pageNum = $derived(Math.max(1, Number(params.get('page')) || 1));
+
 	let transactions = $state<Transaction[]>([]);
 	let count = $state(0);
 	let loading = $state(true);
@@ -132,25 +140,34 @@
 		}
 	}
 
-	// Filter changes reset paging; page steps stay within bounds.
+	function navigate(overrides: Record<string, string | null>, keepPage = false) {
+		const next = new SvelteURLSearchParams(params);
+		if (!keepPage) next.delete('page');
+		for (const [key, value] of Object.entries(overrides)) {
+			if (value === null || value === '') next.delete(key);
+			else next.set(key, value);
+		}
+		const qs = next.toString();
+		goto(qs ? resolve(`/transactions?${qs}`) : resolve('/transactions'), {
+			keepFocus: true,
+			noScroll: true
+		});
+	}
+
 	function setMode(next: Mode) {
-		mode = next;
-		pageNum = 1;
+		navigate({ mode: next === 'month' ? null : next });
 	}
 	function setMonth(next: string) {
-		month = next;
-		pageNum = 1;
+		navigate({ month: next });
 	}
 	function setYear(next: string) {
-		year = next;
-		pageNum = 1;
+		navigate({ year: next });
 	}
-	function onCategoryChange() {
-		subcategoryId = '';
-		pageNum = 1;
+	function onCategoryChange(e: Event) {
+		navigate({ category: (e.currentTarget as HTMLSelectElement).value || null, subcategory: null });
 	}
-	function onSubcategoryChange() {
-		pageNum = 1;
+	function onSubcategoryChange(e: Event) {
+		navigate({ subcategory: (e.currentTarget as HTMLSelectElement).value || null });
 	}
 	function reload() {
 		load(filters, pageNum);
@@ -171,10 +188,10 @@
 		}
 	}
 	function prevPage() {
-		if (pageNum > 1) pageNum -= 1;
+		if (pageNum > 1) navigate({ page: String(pageNum - 1) }, true);
 	}
 	function nextPage() {
-		if (pageNum < totalPages) pageNum += 1;
+		if (pageNum < totalPages) navigate({ page: String(pageNum + 1) }, true);
 	}
 
 	const toggleClass = (active: boolean): string =>
@@ -303,7 +320,7 @@
 			<div class="flex items-center gap-3">
 				<select
 					aria-label="Category"
-					bind:value={categoryId}
+					value={categoryId}
 					onchange={onCategoryChange}
 					class="rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
 				>
@@ -315,7 +332,7 @@
 
 				<select
 					aria-label="Subcategory"
-					bind:value={subcategoryId}
+					value={subcategoryId}
 					onchange={onSubcategoryChange}
 					class="rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
 				>

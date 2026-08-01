@@ -97,6 +97,17 @@ describe('BudgetProgress', () => {
 		expect(headers).toEqual(['Summary', 'Income', 'Expenses']);
 	});
 
+	it('links each category and subcategory to its filtered transactions for the month', async () => {
+		render(BudgetProgress, { report, loading: false, error: '' });
+		await expect
+			.element(page.getByRole('link', { name: 'Housing' }))
+			.toHaveAttribute('href', '/transactions?mode=month&month=2023-12&category=3');
+		await expect
+			.element(page.getByRole('link', { name: 'Rent' }))
+			.toHaveAttribute('href', '/transactions?mode=month&month=2023-12&category=3&subcategory=6');
+		await expect.element(page.getByRole('link', { name: 'Income' })).not.toBeInTheDocument();
+	});
+
 	it('shows progress percentages, including over 100% when over budget', async () => {
 		render(BudgetProgress, { report, loading: false, error: '' });
 		await expect.element(page.getByText('105%')).toBeInTheDocument(); // Housing 1.0523

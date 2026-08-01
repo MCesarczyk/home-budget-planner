@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import type { ResolvedPathname } from '$app/types';
 	import type { BudgetProgressReport, ProgressCategory } from './types';
 
 	let {
@@ -106,6 +108,17 @@
 		return `${Math.min(100, Math.max(0, p))}%`;
 	}
 
+	function txHref(category: number, subcategory?: number): ResolvedPathname | null {
+		if (!report) return null;
+		const q = new URLSearchParams({
+			mode: 'month',
+			month: report.month.slice(0, 7),
+			category: String(category),
+			...(subcategory !== undefined ? { subcategory: String(subcategory) } : {})
+		});
+		return resolve(`/transactions?${q}`);
+	}
+
 	let expenseCats = $derived<ProgressCategory[]>(
 		report?.categories.filter((c) => c.kind === 'expense') ?? []
 	);
@@ -121,57 +134,68 @@
 	actual: string,
 	remaining: string,
 	progress: number | null,
-	strong: boolean
+	strong: boolean,
+	href: ResolvedPathname | null
 )}
 	{@const unbudgeted = isUnbudgeted(planned)}
 	{@const note = remainingNote(kind, planned, remaining)}
-	<div class="flex items-baseline justify-between text-sm px-2">
-	<div>
-		<span
-			class={strong
-				? 'font-semibold text-slate-800 dark:text-slate-200'
-				: 'font-medium text-slate-700 dark:text-slate-300'}
-		>
-			{name}
-			{#if unbudgeted}
-				<span
-					class="ml-1 rounded-sm bg-orange-100 px-1 py-0.5 text-[10px] font-normal text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
-					>unbudgeted</span
-				>
+	<div class="flex items-baseline justify-between px-2 text-sm">
+		<div>
+			<span
+				class={strong
+					? 'font-semibold text-slate-800 dark:text-slate-200'
+					: 'font-medium text-slate-700 dark:text-slate-300'}
+			>
+				{#if href}
+					<a href={href} class="hover:underline focus:underline focus:outline-none">{name}</a>
+				{:else}
+					{name}
+				{/if}
+				{#if unbudgeted}
+					<span
+						class="ml-1 rounded-sm bg-orange-100 px-1 py-0.5 text-[10px] font-normal text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
+						>unbudgeted</span
+					>
+				{/if}
+			</span>
+		</div>
+		<div class="flex items-baseline gap-2">
+			<span
+				class="tabular-nums {unbudgeted
+					? 'font-medium text-orange-700 dark:text-orange-300'
+					: 'text-slate-600 dark:text-slate-300'}"
+			>
+				{actual}{#if !unbudgeted}<span class="text-slate-400 dark:text-slate-500">
+						/{planned}</span
+					>{/if}
+			</span>
+			<span class="text-right text-xs tabular-nums {pctClass(kind, progress)}"
+				>{pctLabel(progress)}</span
+			>
+			{#if note}
+				<p class="text-right text-xs tabular-nums {note.cls}">{note.text}</p>
 			{/if}
-		</span>
+		</div>
 	</div>
-	<div class="flex items-baseline gap-2">
-		<span
-			class="tabular-nums {unbudgeted
-				? 'font-medium text-orange-700 dark:text-orange-300'
-				: 'text-slate-600 dark:text-slate-300'}"
-		>
-			{actual}{#if !unbudgeted}<span class="text-slate-400 dark:text-slate-500">
-					/{planned}</span
-				>{/if}
-		</span>
-		<span class="text-right text-xs tabular-nums {pctClass(kind, progress)}"
-			>{pctLabel(progress)}</span
-		>
-   	    {#if note}
-            <p class="text-right text-xs tabular-nums {note.cls}">{note.text}</p>
-        {/if}
-	</div>
-	</div>
-	<div class="-mt-6 flex items-center gap-2">
-		<div class="h-6 flex-1 overflow-hidden bg-slate-100 dark:bg-slate-800 opacity-20">
-			<div
-				class="h-full {barColor(kind, progress)}"
-				style="width: {barWidth(progress)}"
-			></div>
+	<div class="pointer-events-none -mt-6 flex items-center gap-2">
+		<div class="h-6 flex-1 overflow-hidden bg-slate-100 opacity-20 dark:bg-slate-800">
+			<div class="h-full {barColor(kind, progress)}" style="width: {barWidth(progress)}"></div>
 		</div>
 	</div>
 {/snippet}
 
 {#snippet categoryBlock(cat: ProgressCategory)}
 	<li class="px-4 py-3">
-		{@render meter(cat.kind, cat.name, cat.planned, cat.actual, cat.remaining, cat.progress, true)}
+		{@render meter(
+			cat.kind,
+			cat.name,
+			cat.planned,
+			cat.actual,
+			cat.remaining,
+			cat.progress,
+			true,
+			txHref(cat.id)
+		)}
 		{#if cat.subcategories.length > 0}
 			<ul class="mt-2 space-y-2 border-l border-slate-100 pl-3 dark:border-slate-800">
 				{#each cat.subcategories as sub (sub.id)}
@@ -183,7 +207,8 @@
 							sub.actual,
 							sub.remaining,
 							sub.progress,
-							false
+							false,
+							txHref(cat.id, sub.id)
 						)}
 					</li>
 				{/each}
@@ -290,7 +315,7 @@
 
 		<div class="space-y-1 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
 			<h3 class="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
-			Summary
+				Summary
 			</h3>
 			{@render meter(
 				'income',
@@ -299,7 +324,8 @@
 				report.totals.income.actual,
 				report.totals.income.remaining,
 				report.totals.income.progress,
-				true
+				true,
+				null
 			)}
 			{@render meter(
 				'expense',
@@ -308,7 +334,8 @@
 				report.totals.expense.actual,
 				report.totals.expense.remaining,
 				report.totals.expense.progress,
-				true
+				true,
+				null
 			)}
 		</div>
 

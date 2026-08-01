@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { auth } from '$lib/auth/auth.store.svelte';
 	import { ApiError } from '$lib/api/client';
 	import {
@@ -32,7 +33,6 @@
 	}
 
 	let plans = $state<BudgetPlanDetail[]>([]);
-	let selectedId = $state<number | null>(null);
 	let report = $state<BudgetProgressReport | null>(null);
 	let loading = $state(true);
 	let error = $state('');
@@ -42,7 +42,15 @@
 
 	let reqId = 0;
 
-	let selectedPlan = $derived(plans.find((p) => p.id === selectedId) ?? null);
+	// The selected month lives in the URL (YYYY-MM); empty falls back to the plan
+	// in effect. This makes a month shareable and keeps back/forward in sync.
+	let monthParam = $derived(page.url.searchParams.get('month') ?? '');
+	let selectedPlan = $derived(
+		plans.find((p) => p.month.slice(0, 7) === monthParam) ??
+			plans.find((p) => p.id === report?.id) ??
+			null
+	);
+	let selectedId = $derived(selectedPlan?.id ?? null);
 	let latestPlan = $derived(plans[0] ?? null);
 
 	$effect(() => {
@@ -50,49 +58,52 @@
 	});
 
 	$effect(() => {
-		if (auth.isAuthenticated) init();
+		if (auth.isAuthenticated) loadPlans();
 	});
 
-	// Load the month list (for the selector) and the plan currently in effect.
-	async function init() {
-		loading = true;
-		error = '';
+	$effect(() => {
+		if (auth.isAuthenticated) loadReport(monthParam);
+	});
+
+	async function loadPlans() {
 		plans = await fetchBudgetPlans().catch(() => [] as BudgetPlanDetail[]);
-		try {
-			report = await fetchCurrentBudgetProgress();
-			selectedId = report.id;
-		} catch (e) {
-			// No plan in effect yet (404) is an empty state, not an error banner.
-			if (e instanceof ApiError && e.status === 404) {
-				report = null;
-			} else {
-				error = e instanceof ApiError ? e.message : 'Failed to load budget.';
-			}
-		} finally {
-			loading = false;
-		}
 	}
 
-	async function loadProgress(id: number) {
+	async function loadReport(month: string) {
+		if (month && !plans.length) return; // wait for the plan list to resolve month → id
 		const rid = ++reqId;
 		loading = true;
 		error = '';
 		try {
-			const data = await fetchBudgetProgress(id);
+			const plan = month ? plans.find((p) => p.month.slice(0, 7) === month) : null;
+			if (month && !plan) {
+				report = null;
+				return;
+			}
+			const data = plan ? await fetchBudgetProgress(plan.id) : await fetchCurrentBudgetProgress();
 			if (rid !== reqId) return;
 			report = data;
 		} catch (e) {
 			if (rid !== reqId) return;
-			error = e instanceof ApiError ? e.message : 'Failed to load budget.';
+			// No plan in effect yet (404) is an empty state, not an error banner.
+			if (e instanceof ApiError && e.status === 404) report = null;
+			else error = e instanceof ApiError ? e.message : 'Failed to load budget.';
 		} finally {
 			if (rid === reqId) loading = false;
 		}
 	}
 
+	function navigate(month: string | null) {
+		goto(month ? resolve(`/budget?month=${month}`) : resolve('/budget'), {
+			keepFocus: true,
+			noScroll: true
+		});
+	}
+
 	function onSelect(e: Event) {
 		const id = Number((e.currentTarget as HTMLSelectElement).value);
-		selectedId = id;
-		loadProgress(id);
+		const plan = plans.find((p) => p.id === id);
+		navigate(plan ? plan.month.slice(0, 7) : null);
 	}
 
 	function openNew() {
@@ -106,23 +117,16 @@
 		}
 	}
 
-	// After a save, refresh the plan list and jump to the saved month's progress.
 	async function onSaved(saved: BudgetPlanDetail) {
 		plans = await fetchBudgetPlans().catch(() => plans);
-		selectedId = saved.id;
-		loadProgress(saved.id);
+		const month = saved.month.slice(0, 7);
+		if (month === monthParam) loadReport(month);
+		else navigate(month);
 	}
 
-	// After a delete, fall back to the latest remaining plan (or the empty state).
 	async function onDeleted() {
 		plans = await fetchBudgetPlans().catch(() => [] as BudgetPlanDetail[]);
-		if (plans.length) {
-			selectedId = plans[0].id;
-			loadProgress(plans[0].id);
-		} else {
-			selectedId = null;
-			report = null;
-		}
+		navigate(plans.length ? plans[0].month.slice(0, 7) : null);
 	}
 </script>
 
