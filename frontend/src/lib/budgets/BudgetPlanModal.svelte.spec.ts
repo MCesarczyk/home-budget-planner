@@ -119,4 +119,31 @@ describe('BudgetPlanModal', () => {
 		await rerender({ ...props, open: true });
 		await expect.element(page.getByText('Save failed.')).not.toBeInTheDocument();
 	});
+
+	it('inherits the template into a new plan and creates it for the next month', async () => {
+		const onsaved = vi.fn();
+		render(BudgetPlanModal, {
+			open: true,
+			plan: null,
+			template: plan,
+			onclose: vi.fn(),
+			onsaved,
+			ondeleted: vi.fn()
+		});
+
+		await expect.element(page.getByRole('dialog', { name: 'New budget plan' })).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('combobox', { name: 'Subcategory for line 1' }))
+			.toHaveValue('6');
+
+		await page.getByRole('button', { name: 'Save' }).click();
+
+		await vi.waitFor(() => expect(createBudgetPlan).toHaveBeenCalled());
+		// Template month is 2023-12 → new plan defaults to 2024-01, lines inherited.
+		expect(createBudgetPlan).toHaveBeenCalledWith({
+			month: '2024-01-01',
+			items: [{ subcategory: 6, amount: '1500' }]
+		});
+		expect(onsaved).toHaveBeenCalled();
+	});
 });

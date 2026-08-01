@@ -102,4 +102,42 @@ describe('BudgetPlanForm', () => {
 			.toHaveValue('6');
 		await expect.element(page.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
 	});
+
+	it('inherits lines from a template and advances the month when creating', async () => {
+		const template: BudgetPlanDetail = {
+			id: 9,
+			month: '2023-11-01',
+			planned_income: '0.00',
+			planned_expense: '1500.00',
+			items: [
+				{
+					id: 1,
+					amount: '1500.00',
+					subcategory: {
+						id: 6,
+						name: 'Rent',
+						category: { id: 3, name: 'Housing', kind: 'expense' }
+					}
+				}
+			]
+		};
+		const { onsubmit } = setup({ template });
+
+		// Seeded from the template: the Rent line + amount, month advanced to next.
+		await expect
+			.element(page.getByRole('combobox', { name: 'Subcategory for line 1' }))
+			.toHaveValue('6');
+		await expect
+			.element(page.getByRole('spinbutton', { name: 'Amount for line 1' }))
+			.toHaveValue(1500);
+		await expect.element(page.getByLabelText('Month')).toHaveValue('2023-12');
+		// No delete action — it is still a create.
+		await expect.element(page.getByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+
+		await page.getByRole('button', { name: 'Save' }).click();
+		expect(onsubmit).toHaveBeenCalledWith({
+			month: '2023-12-01',
+			items: [{ subcategory: 6, amount: '1500' }]
+		});
+	});
 });

@@ -10,13 +10,14 @@
 	let {
 		open,
 		plan = null,
+		template = null,
 		onclose,
 		onsaved,
 		ondeleted
 	}: {
 		open: boolean;
-		// The plan to edit (with its items), or null to create a new one.
 		plan?: BudgetPlanDetail | null;
+		template?: BudgetPlanDetail | null;
 		onclose: () => void;
 		onsaved: (saved: BudgetPlanDetail) => void;
 		ondeleted: () => void;
@@ -87,6 +88,7 @@
 		{categories}
 		{subcategories}
 		initial={plan}
+		template={plan ? null : template}
 		{submitting}
 		{deleting}
 		{error}

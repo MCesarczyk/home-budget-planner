@@ -42,8 +42,8 @@
 
 	let reqId = 0;
 
-	// The full plan behind the selected month, for the Edit form (list carries items).
 	let selectedPlan = $derived(plans.find((p) => p.id === selectedId) ?? null);
+	let latestPlan = $derived(plans[0] ?? null);
 
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) goto(resolve('/login'));
@@ -169,6 +169,7 @@
 	<BudgetPlanModal
 		open={modalOpen}
 		plan={editingPlan}
+		template={latestPlan}
 		onclose={() => (modalOpen = false)}
 		onsaved={onSaved}
 		ondeleted={onDeleted}

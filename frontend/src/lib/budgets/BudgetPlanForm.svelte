@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { currentMonth } from '$lib/transactions/helpers';
+	import { currentMonth, shiftMonth } from '$lib/transactions/helpers';
 	import type { Category, Subcategory } from '$lib/transactions/types';
 	import type { BudgetPlanDetail, BudgetPlanInput } from './types';
 
@@ -7,6 +7,7 @@
 		categories,
 		subcategories,
 		initial = null,
+		template = null,
 		submitting = false,
 		deleting = false,
 		error = '',
@@ -17,6 +18,7 @@
 		categories: Category[];
 		subcategories: Subcategory[];
 		initial?: BudgetPlanDetail | null;
+		template?: BudgetPlanDetail | null;
 		submitting?: boolean;
 		deleting?: boolean;
 		error?: string;
@@ -35,15 +37,19 @@
 		return { key: uid++, subcategoryId, amount };
 	}
 
-	// Seed field state once from the plan being edited (null for a new one).
+	// Seed field state once. Editing: seed from the plan itself. Creating with a
+	// template (the previous plan): inherit its lines and advance to the next
+	// month. Otherwise: a blank row at the current month.
 	// input type="month" wants YYYY-MM; the stored month is YYYY-MM-DD.
 	function seed() {
-		return {
-			month: initial ? initial.month.slice(0, 7) : currentMonth(),
-			rows: initial
-				? initial.items.map((it) => makeRow(String(it.subcategory.id), Number(it.amount)))
-				: [makeRow()]
-		};
+		const source = initial ?? template;
+		if (source) {
+			return {
+				month: initial ? source.month.slice(0, 7) : shiftMonth(source.month.slice(0, 7), 1),
+				rows: source.items.map((it) => makeRow(String(it.subcategory.id), Number(it.amount)))
+			};
+		}
+		return { month: currentMonth(), rows: [makeRow()] };
 	}
 	const seeded = seed();
 
