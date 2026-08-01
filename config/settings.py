@@ -35,12 +35,16 @@ DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
 # Comma-separated list, e.g. "example.com,www.example.com". Required when DEBUG
 # is off; under DEBUG Django already allows localhost.
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()
+]
 
 # Origins trusted for unsafe (CSRF-protected) requests — must include scheme,
 # e.g. "https://example.com". Needed once served from a real domain.
 CSRF_TRUSTED_ORIGINS = [
-    o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+    o.strip()
+    for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
 ]
 
 # HTTPS posture, decoupled from DEBUG. When on: cookies are Secure (HTTPS-only)
@@ -93,7 +97,9 @@ REST_FRAMEWORK = {
     # Number of trusted reverse proxies in front of the app. Set to 1 in prod (via
     # env) so throttling keys off the real client IP from X-Forwarded-For and
     # can't be spoofed. None (dev / no proxy) → uses REMOTE_ADDR.
-    "NUM_PROXIES": int(os.environ["NUM_PROXIES"]) if os.environ.get("NUM_PROXIES") else None,
+    "NUM_PROXIES": int(os.environ["NUM_PROXIES"])
+    if os.environ.get("NUM_PROXIES")
+    else None,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -117,11 +123,24 @@ SPECTACULAR_SETTINGS = {
     "TAGS": [
         {"name": "health", "description": "Liveness / readiness probe (public)."},
         {"name": "auth", "description": "Cookie-based JWT authentication."},
-        {"name": "accounts", "description": "Money containers — assets and liabilities."},
-        {"name": "purposes", "description": "Savings goals accounts can be earmarked toward."},
+        {
+            "name": "accounts",
+            "description": "Money containers — assets and liabilities.",
+        },
+        {
+            "name": "purposes",
+            "description": "Savings goals accounts can be earmarked toward.",
+        },
         {"name": "categories", "description": "Income / expense classification."},
         {"name": "subcategories", "description": "Subdivisions of a category."},
-        {"name": "transactions", "description": "Money movements (income / expense / transfer)."},
+        {
+            "name": "transactions",
+            "description": "Money movements (income / expense / transfer).",
+        },
+        {
+            "name": "budget-plans",
+            "description": "Planned spending / income for a period.",
+        },
         {"name": "reports", "description": "Read-only aggregations for dashboards."},
     ],
 }
@@ -259,7 +278,9 @@ STORAGES = {
 }
 if not DEBUG:
     # Compress + serve with far-future cache headers in production.
-    STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedStaticFilesStorage"
+    STORAGES["staticfiles"]["BACKEND"] = (
+        "whitenoise.storage.CompressedStaticFilesStorage"
+    )
 
 
 # HTTPS hardening — active whenever the site is served over HTTPS (SECURE_COOKIES),
@@ -271,7 +292,9 @@ if SECURE_COOKIES:
     SESSION_COOKIE_SECURE = True
     # Opt-in extras (set via env). SSL redirect is usually the proxy's job; HSTS
     # locks browsers to HTTPS so enable it only once HTTPS is stable.
-    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
+    SECURE_SSL_REDIRECT = (
+        os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
+    )
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
     SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
