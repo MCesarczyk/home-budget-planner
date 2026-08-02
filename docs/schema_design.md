@@ -168,6 +168,7 @@ erDiagram
         varchar     name UK
         varchar     description "optional"
         numeric     target_amount "NUMERIC(14,2), nullable"
+        bool        is_off_budget "default false"
     }
 
     accounts {
@@ -226,6 +227,8 @@ income/expense nature. They must not share a table.
 - `description` — optional free text
 - `target_amount` — `NUMERIC(14,2)`, **nullable** — the amount being saved toward.
   Progress = `Σ(balance of accounts with this purpose) / target_amount`.
+- `is_off_budget` — bool, default `false` — the accounts under this purpose sit
+  **outside the budget**. See [off-budget purposes](#off-budget-purposes).
 
 One purpose → many accounts (several accounts can sit under one goal, and the
 earmarked total is the sum of their balances). `PROTECT` prevents deleting a
@@ -236,6 +239,32 @@ subcategories (`Savings & Investments → Emergency Fund / Retirement Account`).
 v2, moving money into a savings account is a **transfer** (net worth unchanged) and
 the earmark lives on the account's purpose — so that v1 expense category is largely
 superseded. Cleanup of those subcategories can follow later.
+
+### Off-budget purposes
+
+`purposes.is_off_budget` marks a purpose whose accounts sit **outside the budget** —
+an emergency fund, a term deposit. The money is still part of net worth, but it has
+already been budgeted for: it counted as spend on the month it was set aside.
+
+So the expense boundary is not "left an account" but "left the *on-budget* world":
+
+| Transaction | Counts as |
+|---|---|
+| categorised transfer *into* an off-budget account | expense — money set aside |
+| anything sourced *from* an off-budget account | nothing — counted on the way in |
+| off-budget → off-budget (matured deposit rolled over) | nothing |
+
+Counting a fund's purpose-spend again would double-count it, and would blow a hole
+in the month's budget for something the user deliberately saved for.
+
+The predicates live in `transactions/aggregation.py` (`off_budget_account_ids()`,
+`flow_predicates()`) and are shared by the spending, cashflow, and budget-progress
+aggregations, so the three cannot drift apart. With no off-budget purposes they
+reduce to the plain leg-shape predicates above — behaviour is unchanged.
+
+The flag is on the **purpose**, not the account: an earmark is what makes money
+off-budget, and several accounts under one goal (rolling deposits) then inherit it
+without per-account bookkeeping.
 
 ### Changes to `transactions`
 
@@ -255,11 +284,12 @@ No stored `type` column — no drift. The type is a pure function of the two leg
 |------------------|-----------------------|--------------|---------------|
 | NULL             | SET                   | income       | required      |
 | SET              | NULL                  | expense      | required      |
-| SET              | SET                   | transfer     | NULL          |
+| SET              | SET                   | transfer     | optional      |
 
 External counterparties (employer, merchant) are represented by the **NULL leg** —
 there is no need for an explicit "external" pseudo-account. The category describes
-*what* an income/expense was; transfers carry no category.
+*what* an income/expense was; a transfer may carry one too (optional, kind
+unconstrained) so an internal move can still be budgeted against a line.
 
 ## Where `kind` fits now
 
@@ -481,8 +511,9 @@ currently in effect — the current month, or the most recent prior month if non
 joins the plan to the **actual transactions in its month**:
 
 - Actuals are a single `GROUP BY subcategory` aggregate over transactions whose
-  `tx_date` falls in the plan's month (transfers, having no subcategory, drop out).
-  Two queries total; no N+1.
+  `tx_date` falls in the plan's month (uncategorised transfers drop out). Anything
+  sourced from an **off-budget** account is excluded — see
+  [off-budget purposes](#off-budget-purposes). Two queries total; no N+1.
 - Each line reports `planned`, `actual`, `remaining` (`planned − actual`) and
   `progress` (`actual / planned`). Lines roll up to categories and to
   income/expense totals.
