@@ -15,8 +15,8 @@ vi.mock('./api', () => ({
 const fetchPurposeList = vi.mocked(api.fetchPurposeList);
 
 const purposes: Purpose[] = [
-	{ id: 1, name: 'Emergency', description: '', target_amount: '10000.00' },
-	{ id: 2, name: 'Vacation', description: '', target_amount: null }
+	{ id: 1, name: 'Emergency', description: '', target_amount: '10000.00', is_off_budget: false },
+	{ id: 2, name: 'Vacation', description: '', target_amount: null, is_off_budget: false }
 ];
 
 beforeEach(() => {

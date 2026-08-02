@@ -5,7 +5,8 @@ from .models import Account, Purpose
 
 @admin.register(Purpose)
 class PurposeAdmin(admin.ModelAdmin):
-    list_display = ("name", "target_amount")
+    list_display = ("name", "target_amount", "is_off_budget")
+    list_filter = ("is_off_budget",)
     search_fields = ("name",)
 
 

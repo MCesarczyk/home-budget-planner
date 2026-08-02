@@ -10,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
+from transactions.aggregation import off_budget_account_ids
 from transactions.models import Transaction
 
 from .models import BudgetPlan
@@ -94,13 +95,19 @@ def _build_progress(plan):
     month, grouped into subcategories -> categories -> income/expense totals.
 
     Actuals are a single grouped aggregate; subcategories with spending but no
-    plan line are included with planned=0 (unbudgeted spend). Two queries total."""
+    plan line are included with planned=0 (unbudgeted spend). Two queries total.
+
+    Money spent out of an off-budget account (an emergency-fund purpose-spend, or
+    rolling a matured deposit into a new one) is excluded — it counted already
+    when it was set aside. The contribution into the fund still counts here, as
+    any categorised transfer does."""
     actual_rows = (
         Transaction.objects.filter(
             subcategory__isnull=False,
             tx_date__year=plan.month.year,
             tx_date__month=plan.month.month,
         )
+        .exclude(source_account__in=off_budget_account_ids())
         .values(
             "subcategory__id",
             "subcategory__name",

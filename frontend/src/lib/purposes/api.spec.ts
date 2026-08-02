@@ -39,13 +39,15 @@ const purpose: Purpose = {
 	id: 3,
 	name: 'Emergency',
 	description: '',
-	target_amount: '10000.00'
+	target_amount: '10000.00',
+	is_off_budget: false
 };
 
 const input: PurposeInput = {
 	name: 'Emergency',
 	description: '',
-	target_amount: '10000.00'
+	target_amount: '10000.00',
+	is_off_budget: false
 };
 
 describe('purposes CRUD', () => {
