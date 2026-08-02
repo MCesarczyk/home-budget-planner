@@ -74,6 +74,57 @@ describe('TransactionForm', () => {
 		expect(onsubmit).not.toHaveBeenCalled();
 	});
 
+	it('submits an uncategorised transfer', async () => {
+		const { onsubmit } = setup();
+
+		await page.getByRole('button', { name: 'Transfer' }).click();
+		await page.getByRole('spinbutton', { name: 'Amount' }).fill('50');
+		await page.getByRole('combobox', { name: 'From account', exact: true }).selectOptions('1');
+		await page.getByRole('combobox', { name: 'To account', exact: true }).selectOptions('2');
+		await page.getByRole('button', { name: 'Save' }).click();
+
+		expect(onsubmit).toHaveBeenCalledWith({
+			tx_date: today(),
+			amount: '50',
+			comment: '',
+			source_account: 1,
+			destination_account: 2,
+			subcategory: null
+		});
+	});
+
+	it('submits a transfer with a subcategory', async () => {
+		const { onsubmit } = setup();
+
+		await page.getByRole('button', { name: 'Transfer' }).click();
+		await page.getByRole('spinbutton', { name: 'Amount' }).fill('50');
+		await page.getByRole('combobox', { name: 'From account', exact: true }).selectOptions('1');
+		await page.getByRole('combobox', { name: 'To account', exact: true }).selectOptions('2');
+		await page.getByRole('combobox', { name: 'Category', exact: true }).selectOptions('1');
+		await page.getByRole('combobox', { name: 'Subcategory' }).selectOptions('10');
+		await page.getByRole('button', { name: 'Save' }).click();
+
+		expect(onsubmit).toHaveBeenCalledWith(
+			expect.objectContaining({ source_account: 1, destination_account: 2, subcategory: 10 })
+		);
+	});
+
+	it('rejects a transfer with a category but no subcategory', async () => {
+		const { onsubmit } = setup();
+
+		await page.getByRole('button', { name: 'Transfer' }).click();
+		await page.getByRole('spinbutton', { name: 'Amount' }).fill('50');
+		await page.getByRole('combobox', { name: 'From account', exact: true }).selectOptions('1');
+		await page.getByRole('combobox', { name: 'To account', exact: true }).selectOptions('2');
+		await page.getByRole('combobox', { name: 'Category', exact: true }).selectOptions('1');
+		await page.getByRole('button', { name: 'Save' }).click();
+
+		await expect
+			.element(page.getByText('Select a subcategory, or clear the category.'))
+			.toBeInTheDocument();
+		expect(onsubmit).not.toHaveBeenCalled();
+	});
+
 	it('requires a positive amount', async () => {
 		const { onsubmit } = setup();
 
