@@ -16,6 +16,9 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = "categories"
 
+    def __str__(self):
+        return self.name
+
 
 class Subcategory(models.Model):
     category = models.ForeignKey(
@@ -30,6 +33,9 @@ class Subcategory(models.Model):
                 fields=["category", "name"], name="uq_subcategory_per_category"
             )
         ]
+
+    def __str__(self):
+        return f"{self.category.name} / {self.name}"
 
 
 class Transaction(models.Model):
@@ -87,3 +93,6 @@ class Transaction(models.Model):
                 condition=_TRANSFER | Q(subcategory__isnull=False),
             ),
         ]
+
+    def __str__(self):
+        return f"{self.tx_date} {self.amount}"
