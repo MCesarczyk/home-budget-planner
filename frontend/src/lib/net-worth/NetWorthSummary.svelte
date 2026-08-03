@@ -128,7 +128,7 @@
 			{:else}
 				{#each assetSections as section (section.purpose ?? '__ungrouped')}
 					{#if section.purpose}
-						<div class="pl-4 overflow-hidden rounded-md {section.tint}">
+						<div class="overflow-hidden rounded-md pl-4 {section.tint}">
 							<div class="flex items-baseline justify-between py-1.5 pr-4 pl-2">
 								<span
 									class="text-[11px] font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400"

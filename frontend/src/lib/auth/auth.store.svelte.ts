@@ -1,9 +1,5 @@
 import type { User } from './types';
-import {
-	fetchMe,
-	login as apiLogin,
-	logout as apiLogout,
-} from './utils';
+import { fetchMe, login as apiLogin, logout as apiLogout } from './utils';
 
 class AuthState {
 	user = $state<User | null>(null);

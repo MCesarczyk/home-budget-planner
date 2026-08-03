@@ -147,7 +147,7 @@
 					: 'font-medium text-slate-700 dark:text-slate-300'}
 			>
 				{#if href}
-					<a href={href} class="hover:underline focus:underline focus:outline-none">{name}</a>
+					<a {href} class="hover:underline focus:underline focus:outline-none">{name}</a>
 				{:else}
 					{name}
 				{/if}
