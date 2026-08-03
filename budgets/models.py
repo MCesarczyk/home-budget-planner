@@ -12,6 +12,10 @@ class BudgetPlan(models.Model):
     class Meta:
         ordering = ["-month"]
 
+    def __str__(self):
+        # str() first: month may still be the string it was assigned.
+        return f"Budget {str(self.month)[:7]}"
+
 
 class BudgetItem(models.Model):
     """One planned amount inside a plan, for a single subcategory. `amount` is a
@@ -39,3 +43,6 @@ class BudgetItem(models.Model):
                 condition=Q(amount__gt=0),
             ),
         ]
+
+    def __str__(self):
+        return f"{self.subcategory} {self.amount}"

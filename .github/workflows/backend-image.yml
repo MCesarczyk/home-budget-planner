@@ -58,6 +58,9 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-root
 
+      - name: Lint
+        run: poetry run ruff check .
+
       - name: Check for missing migrations
         run: poetry run python manage.py makemigrations --check --dry-run
 
