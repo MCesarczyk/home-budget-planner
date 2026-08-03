@@ -101,9 +101,7 @@ describe('budget page', () => {
 
 		await expect.element(page.getByText('November Housing')).toBeInTheDocument();
 		expect(fetchBudgetProgress).toHaveBeenCalledWith(4);
-		await expect
-			.element(page.getByRole('combobox', { name: 'Budget month' }))
-			.toHaveValue('4');
+		await expect.element(page.getByRole('combobox', { name: 'Budget month' })).toHaveValue('4');
 	});
 
 	it('shows an empty state when no plan is in effect', async () => {

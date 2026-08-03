@@ -14,7 +14,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const headers = new Headers(request.headers);
 	for (const h of HOP_BY_HOP) headers.delete(h);
 
-    headers.delete('origin');
+	headers.delete('origin');
 	headers.delete('referer');
 
 	const method = request.method;

@@ -39,12 +39,10 @@ class ThemeState {
 		this.preference = readStored();
 		this.#systemDark = systemPrefersDark();
 		this.#apply();
-		window
-			.matchMedia('(prefers-color-scheme: dark)')
-			.addEventListener('change', (e) => {
-				this.#systemDark = e.matches;
-				if (this.preference === 'system') this.#apply();
-			});
+		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+			this.#systemDark = e.matches;
+			if (this.preference === 'system') this.#apply();
+		});
 	}
 
 	#apply(): void {

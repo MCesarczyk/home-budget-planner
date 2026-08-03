@@ -9,11 +9,18 @@
 	onclick={() => theme.cycle()}
 	title={`Theme: ${labels[theme.preference]} — click to change`}
 	aria-label={`Change theme (currently ${labels[theme.preference]})`}
-	class="rounded-md p-2 text-slate-600 transition-colors hover:bg-slate-200/70 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:text-slate-300 dark:hover:bg-slate-800"
+	class="rounded-md p-2 text-slate-600 transition-colors hover:bg-slate-200/70 focus:ring-2 focus:ring-slate-400 focus:outline-none dark:text-slate-300 dark:hover:bg-slate-800"
 >
 	{#if theme.preference === 'light'}
 		<!-- sun -->
-		<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+		<svg
+			class="size-5"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			aria-hidden="true"
+		>
 			<circle cx="12" cy="12" r="4" />
 			<path
 				stroke-linecap="round"
@@ -27,7 +34,14 @@
 		</svg>
 	{:else}
 		<!-- monitor (system) -->
-		<svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+		<svg
+			class="size-5"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			aria-hidden="true"
+		>
 			<rect x="3" y="4" width="18" height="12" rx="1" />
 			<path stroke-linecap="round" d="M8 20h8m-4-4v4" />
 		</svg>

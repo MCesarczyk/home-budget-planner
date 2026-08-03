@@ -234,9 +234,7 @@
 			</div>
 		</div>
 		{#if isTransfer}
-			<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-				*optional
-			</p>
+			<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">*optional</p>
 		{/if}
 	</div>
 
