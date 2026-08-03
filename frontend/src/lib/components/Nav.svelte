@@ -5,6 +5,7 @@
 	const links = [
 		{ href: '/', label: 'Settings', icon: true },
 		{ href: '/transactions', label: 'Transactions', icon: false },
+		{ href: '/budget', label: 'Budget', icon: false },
 		{ href: '/finances', label: 'Finances', icon: false }
 	] as const;
 </script>

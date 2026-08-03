@@ -15,7 +15,8 @@ const existing: Purpose = {
 	id: 3,
 	name: 'Emergency',
 	description: 'Rainy day',
-	target_amount: '10000.00'
+	target_amount: '10000.00',
+	is_off_budget: false
 };
 
 describe('PurposeForm', () => {
@@ -29,7 +30,23 @@ describe('PurposeForm', () => {
 		expect(onsubmit).toHaveBeenCalledWith({
 			name: 'Vacation',
 			description: '',
-			target_amount: '3000'
+			target_amount: '3000',
+			is_off_budget: false
+		});
+	});
+
+	it('submits the off-budget flag when checked', async () => {
+		const { onsubmit } = setup();
+
+		await page.getByRole('textbox', { name: 'Name' }).fill('Emergency fund');
+		await page.getByRole('checkbox', { name: 'Off-budget' }).click();
+		await page.getByRole('button', { name: 'Save' }).click();
+
+		expect(onsubmit).toHaveBeenCalledWith({
+			name: 'Emergency fund',
+			description: '',
+			target_amount: null,
+			is_off_budget: true
 		});
 	});
 
@@ -42,7 +59,8 @@ describe('PurposeForm', () => {
 		expect(onsubmit).toHaveBeenCalledWith({
 			name: 'Buffer',
 			description: '',
-			target_amount: null
+			target_amount: null,
+			is_off_budget: false
 		});
 	});
 
@@ -63,7 +81,8 @@ describe('PurposeForm', () => {
 		expect(onsubmit).toHaveBeenCalledWith({
 			name: 'Emergency',
 			description: 'Rainy day',
-			target_amount: '10000'
+			target_amount: '10000',
+			is_off_budget: false
 		});
 	});
 

@@ -15,8 +15,9 @@ vi.mock('./api', () => ({
 const fetchPurposeList = vi.mocked(api.fetchPurposeList);
 
 const purposes: Purpose[] = [
-	{ id: 1, name: 'Emergency', description: '', target_amount: '10000.00' },
-	{ id: 2, name: 'Vacation', description: '', target_amount: null }
+	{ id: 1, name: 'Emergency', description: '', target_amount: '10000.00', is_off_budget: false },
+	{ id: 2, name: 'Vacation', description: '', target_amount: null, is_off_budget: false },
+	{ id: 3, name: 'Deposit', description: '', target_amount: null, is_off_budget: true }
 ];
 
 beforeEach(() => {
@@ -31,6 +32,13 @@ describe('PurposesManager', () => {
 		await expect.element(page.getByText('Emergency')).toBeInTheDocument();
 		await expect.element(page.getByText('10000.00')).toBeInTheDocument();
 		await expect.element(page.getByText('Vacation')).toBeInTheDocument();
+	});
+
+	it('badges off-budget purposes only', async () => {
+		render(PurposesManager);
+
+		await expect.element(page.getByText('Off-budget')).toBeInTheDocument();
+		expect(page.getByText('Off-budget').elements()).toHaveLength(1);
 	});
 
 	it('opens the create modal from the Add purpose button', async () => {

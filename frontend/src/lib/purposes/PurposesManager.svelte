@@ -77,7 +77,16 @@
 						onkeydown={(e) => onRowKey(e, purpose)}
 						class="flex cursor-pointer items-center justify-between px-4 py-2.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50"
 					>
-						<span class="text-slate-700 dark:text-slate-300">{purpose.name}</span>
+						<span class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+							{purpose.name}
+							{#if purpose.is_off_budget}
+								<span
+									class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+								>
+									Off-budget
+								</span>
+							{/if}
+						</span>
 						{#if purpose.target_amount !== null}
 							<span class="text-slate-500 dark:text-slate-400">{purpose.target_amount}</span>
 						{/if}

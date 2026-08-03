@@ -23,7 +23,8 @@
 		return {
 			name: initial?.name ?? '',
 			description: initial?.description ?? '',
-			targetAmount: initial?.target_amount != null ? Number(initial.target_amount) : null
+			targetAmount: initial?.target_amount != null ? Number(initial.target_amount) : null,
+			offBudget: initial?.is_off_budget ?? false
 		};
 	}
 	const seeded = seed();
@@ -31,6 +32,7 @@
 	let name = $state(seeded.name);
 	let description = $state(seeded.description);
 	let targetAmount = $state<number | null>(seeded.targetAmount);
+	let offBudget = $state(seeded.offBudget);
 	let validationError = $state('');
 	let confirmingDelete = $state(false);
 
@@ -48,7 +50,8 @@
 		onsubmit({
 			name: name.trim(),
 			description: description.trim(),
-			target_amount: targetAmount === null ? null : String(targetAmount)
+			target_amount: targetAmount === null ? null : String(targetAmount),
+			is_off_budget: offBudget
 		});
 	}
 </script>
@@ -75,6 +78,16 @@
 		<label class={labelClass} for="purpose-description">Description</label>
 		<input id="purpose-description" type="text" bind:value={description} class={fieldClass} />
 	</div>
+
+	<label class="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+		<input id="purpose-off-budget" type="checkbox" bind:checked={offBudget} class="mt-0.5" />
+		<span>
+			Off-budget
+			<span class="block text-xs text-slate-500 dark:text-slate-400">
+				Moving money into this fund counts as spending; spending it later does not.
+			</span>
+		</span>
+	</label>
 
 	{#if validationError || error}
 		<div

@@ -61,6 +61,7 @@
 	let validationError = $state('');
 	let confirmingDelete = $state(false);
 
+	let isTransfer = $derived(type === 'transfer');
 	let expectedKind = $derived(type === 'income' ? 'income' : 'expense');
 	let activeAccounts = $derived(accounts.filter((a) => a.is_active));
 	let categoryOptions = $derived(categories.filter((c) => c.kind === expectedKind));
@@ -108,11 +109,15 @@
 				validationError = 'The two accounts must differ.';
 				return;
 			}
+			if (categoryId && !subcategoryId) {
+				validationError = 'Select a subcategory, or clear the category.';
+				return;
+			}
 			onsubmit({
 				...base,
 				source_account: Number(sourceId),
 				destination_account: Number(destinationId),
-				subcategory: null
+				subcategory: subcategoryId ? Number(subcategoryId) : null
 			});
 			return;
 		}
@@ -200,6 +205,9 @@
 				{/each}
 			</select>
 		</div>
+	{/if}
+
+	<div>
 		<div class="grid grid-cols-2 gap-3">
 			<div>
 				<label class={labelClass} for="tx-category">Category</label>
@@ -209,7 +217,7 @@
 					onchange={onCategoryChange}
 					class={fieldClass}
 				>
-					<option value="">Select category…</option>
+					<option value="">{isTransfer ? 'Uncategorised' : 'Select category…'}</option>
 					{#each categoryOptions as category (category.id)}
 						<option value={String(category.id)}>{category.name}</option>
 					{/each}
@@ -218,14 +226,19 @@
 			<div>
 				<label class={labelClass} for="tx-subcategory">Subcategory</label>
 				<select id="tx-subcategory" bind:value={subcategoryId} class={fieldClass}>
-					<option value="">Select subcategory…</option>
+					<option value="">{isTransfer ? 'Uncategorised' : 'Select subcategory…'}</option>
 					{#each subcategoryOptions as subcategory (subcategory.id)}
 						<option value={String(subcategory.id)}>{subcategory.name}</option>
 					{/each}
 				</select>
 			</div>
 		</div>
-	{/if}
+		{#if isTransfer}
+			<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+				*optional
+			</p>
+		{/if}
+	</div>
 
 	<div>
 		<label class={labelClass} for="tx-comment">Comment</label>

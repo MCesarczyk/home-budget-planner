@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import { ApiError } from '$lib/api/client';
 import CategoryModal from './CategoryModal.svelte';
 import * as api from './api';
 import type { Category } from './types';
@@ -63,5 +64,18 @@ describe('CategoryModal', () => {
 
 		await vi.waitFor(() => expect(deleteCategory).toHaveBeenCalledWith(2));
 		expect(onsaved).toHaveBeenCalled();
+	});
+
+	it('clears a previous error when reopened', async () => {
+		updateCategory.mockRejectedValue(new ApiError(400, 'Save failed.'));
+		const props = { open: true, category: existing, onclose: vi.fn(), onsaved: vi.fn() };
+		const { rerender } = render(CategoryModal, props);
+
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect.element(page.getByText('Save failed.')).toBeInTheDocument();
+
+		await rerender({ ...props, open: false });
+		await rerender({ ...props, open: true });
+		await expect.element(page.getByText('Save failed.')).not.toBeInTheDocument();
 	});
 });

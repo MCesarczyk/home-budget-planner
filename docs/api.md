@@ -152,11 +152,16 @@ A savings goal an account can be earmarked toward. **Full CRUD.**
 | `name` | string(100) | **required**, unique |
 | `description` | string(255) | optional, defaults to `""` |
 | `target_amount` | decimal string | nullable |
+| `is_off_budget` | bool | defaults to `false` |
 
 - `DELETE` returns **409** if any account still references the purpose.
+- `is_off_budget` marks the accounts under this purpose as sitting **outside** the
+  budget: money moved *into* them counts as spending (it is set aside), money moved
+  or spent *out of* them does not (it was counted on the way in). Affects the
+  spending, cashflow, and budget-progress aggregations — see §4.6.
 
 ```json
-{ "id": 1, "name": "Emergency Fund", "description": "3-6 months of expenses", "target_amount": "20000.00" }
+{ "id": 1, "name": "Emergency Fund", "description": "3-6 months of expenses", "target_amount": "20000.00", "is_off_budget": false }
 ```
 
 ### 4.2 Accounts — `/api/v1/accounts/`
@@ -251,13 +256,14 @@ the sign of `amount`):
 |---|---|---|---|
 | **income** | `null` | set | **required**, must belong to an `income` category |
 | **expense** | set | `null` | **required**, must belong to an `expense` category |
-| **transfer** | set | set (different) | **must be `null`** |
+| **transfer** | set | set (different) | **optional** — categorise it to have it count as budgeted spend (e.g. a contribution into an off-budget fund) |
 
 **Validation** (all return **400** with `non_field_errors`, except amount):
 - At least one of `source_account` / `destination_account` must be set.
 - `source_account` and `destination_account` must differ (no self-transfer).
 - `amount` must be positive → `{"amount": ["amount must be positive."]}`.
-- Transfer (both legs set) must **not** have a `subcategory`.
+- Transfer (both legs set) **may** have a `subcategory`; its category `kind` is not
+  constrained.
 - Income/expense (one leg) **must** have a `subcategory`, and its category `kind`
   must match the shape (income→income category, expense→expense category).
 
@@ -316,6 +322,19 @@ Read-only aggregations for dashboards. All are `GET`, require auth, and (being
 safe methods) need no `X-CSRFToken`. Money values are decimal strings. **Transfers
 are excluded** from spending and cashflow (they're internal moves that net to
 zero); spending is expense-only.
+
+**Off-budget accounts.** An account whose purpose has `is_off_budget: true` sits
+outside the budget, which shifts where the expense boundary falls in spending,
+cashflow, and budget progress:
+
+| Transaction | Counts as |
+|---|---|
+| categorised transfer *into* an off-budget account | expense (money set aside) |
+| anything sourced *from* an off-budget account | nothing — already counted on the way in |
+| off-budget → off-budget (e.g. a matured deposit rolled over) | nothing |
+
+With no off-budget purposes the aggregations are unchanged: source-only is expense,
+destination-only is income, transfers drop out.
 
 **`GET /api/v1/reports/net-worth/`** — balances grouped into assets and liabilities,
 with subtotals. Liability balances are negative, so

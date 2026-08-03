@@ -13,6 +13,7 @@ class Purpose(models.Model):
     target_amount = models.DecimalField(
         max_digits=14, decimal_places=2, null=True, blank=True
     )
+    is_off_budget = models.BooleanField(default=False)
 
 
 class Account(models.Model):
@@ -41,8 +42,12 @@ class Account(models.Model):
         """Current balance = opening balance + money in − money out. Computed
         from the transaction legs (reverse relations defined on Transaction).
         Negative for a liability with debt still outstanding."""
-        incoming = self.incoming_transactions.aggregate(s=Sum("amount"))["s"] or Decimal("0")
-        outgoing = self.outgoing_transactions.aggregate(s=Sum("amount"))["s"] or Decimal("0")
+        incoming = self.incoming_transactions.aggregate(s=Sum("amount"))[
+            "s"
+        ] or Decimal("0")
+        outgoing = self.outgoing_transactions.aggregate(s=Sum("amount"))[
+            "s"
+        ] or Decimal("0")
         return self.opening_balance + incoming - outgoing
 
     @property

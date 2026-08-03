@@ -8,7 +8,7 @@ from .models import Account, Purpose
 class PurposeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purpose
-        fields = ["id", "name", "description", "target_amount"]
+        fields = ["id", "name", "description", "target_amount", "is_off_budget"]
 
 
 class AccountRefSerializer(serializers.ModelSerializer):

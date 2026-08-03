@@ -22,10 +22,12 @@ export interface Purpose {
 	name: string;
 	description: string;
 	target_amount: string | null;
+	is_off_budget: boolean;
 }
 
 export interface PurposeInput {
 	name: string;
 	description: string;
 	target_amount: string | null;
+	is_off_budget: boolean;
 }

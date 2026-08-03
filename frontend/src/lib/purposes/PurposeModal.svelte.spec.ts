@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
+import { ApiError } from '$lib/api/client';
 import PurposeModal from './PurposeModal.svelte';
 import * as api from './api';
 import type { Purpose } from './types';
@@ -19,7 +20,8 @@ const existing: Purpose = {
 	id: 3,
 	name: 'Emergency',
 	description: '',
-	target_amount: '10000.00'
+	target_amount: '10000.00',
+	is_off_budget: false
 };
 
 beforeEach(() => {
@@ -71,5 +73,18 @@ describe('PurposeModal', () => {
 
 		await vi.waitFor(() => expect(deletePurpose).toHaveBeenCalledWith(3));
 		expect(onsaved).toHaveBeenCalled();
+	});
+
+	it('clears a previous error when reopened', async () => {
+		updatePurpose.mockRejectedValue(new ApiError(400, 'Save failed.'));
+		const props = { open: true, purpose: existing, onclose: vi.fn(), onsaved: vi.fn() };
+		const { rerender } = render(PurposeModal, props);
+
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect.element(page.getByText('Save failed.')).toBeInTheDocument();
+
+		await rerender({ ...props, open: false });
+		await rerender({ ...props, open: true });
+		await expect.element(page.getByText('Save failed.')).not.toBeInTheDocument();
 	});
 });

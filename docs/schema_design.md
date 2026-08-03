@@ -3,11 +3,13 @@
 Design for normalizing the flat `transactions` table (see `transactions_sample.sql`)
 into related `categories`, `subcategories`, and `transactions` tables.
 
-Status: **v1, v2 & v3 implemented** (models + migrations). v1 covers `categories`,
+Status: **v1, v2, v3 & v4 implemented** (models + migrations). v1 covers `categories`,
 `subcategories`, `transactions`; v2 adds the `wallets` app (`accounts`,
 `purposes`), transaction account legs, and transfers — see
 ["v2 — Accounts & transfers"](#v2--accounts--transfers); v3 adds **liabilities**
-(debts as negative-balance accounts) — see ["v3 — Liabilities"](#v3--liabilities-debts).
+(debts as negative-balance accounts) — see ["v3 — Liabilities"](#v3--liabilities-debts);
+v4 adds the `budgets` app (**monthly budget plans**) — see
+["v4 — Budget plans"](#v4--budget-plans).
 
 ## Background
 
@@ -166,6 +168,7 @@ erDiagram
         varchar     name UK
         varchar     description "optional"
         numeric     target_amount "NUMERIC(14,2), nullable"
+        bool        is_off_budget "default false"
     }
 
     accounts {
@@ -224,6 +227,8 @@ income/expense nature. They must not share a table.
 - `description` — optional free text
 - `target_amount` — `NUMERIC(14,2)`, **nullable** — the amount being saved toward.
   Progress = `Σ(balance of accounts with this purpose) / target_amount`.
+- `is_off_budget` — bool, default `false` — the accounts under this purpose sit
+  **outside the budget**. See [off-budget purposes](#off-budget-purposes).
 
 One purpose → many accounts (several accounts can sit under one goal, and the
 earmarked total is the sum of their balances). `PROTECT` prevents deleting a
@@ -234,6 +239,32 @@ subcategories (`Savings & Investments → Emergency Fund / Retirement Account`).
 v2, moving money into a savings account is a **transfer** (net worth unchanged) and
 the earmark lives on the account's purpose — so that v1 expense category is largely
 superseded. Cleanup of those subcategories can follow later.
+
+### Off-budget purposes
+
+`purposes.is_off_budget` marks a purpose whose accounts sit **outside the budget** —
+an emergency fund, a term deposit. The money is still part of net worth, but it has
+already been budgeted for: it counted as spend on the month it was set aside.
+
+So the expense boundary is not "left an account" but "left the *on-budget* world":
+
+| Transaction | Counts as |
+|---|---|
+| categorised transfer *into* an off-budget account | expense — money set aside |
+| anything sourced *from* an off-budget account | nothing — counted on the way in |
+| off-budget → off-budget (matured deposit rolled over) | nothing |
+
+Counting a fund's purpose-spend again would double-count it, and would blow a hole
+in the month's budget for something the user deliberately saved for.
+
+The predicates live in `transactions/aggregation.py` (`off_budget_account_ids()`,
+`flow_predicates()`) and are shared by the spending, cashflow, and budget-progress
+aggregations, so the three cannot drift apart. With no off-budget purposes they
+reduce to the plain leg-shape predicates above — behaviour is unchanged.
+
+The flag is on the **purpose**, not the account: an earmark is what makes money
+off-budget, and several accounts under one goal (rolling deposits) then inherit it
+without per-account bookkeeping.
 
 ### Changes to `transactions`
 
@@ -253,11 +284,12 @@ No stored `type` column — no drift. The type is a pure function of the two leg
 |------------------|-----------------------|--------------|---------------|
 | NULL             | SET                   | income       | required      |
 | SET              | NULL                  | expense      | required      |
-| SET              | SET                   | transfer     | NULL          |
+| SET              | SET                   | transfer     | optional      |
 
 External counterparties (employer, merchant) are represented by the **NULL leg** —
 there is no need for an explicit "external" pseudo-account. The category describes
-*what* an income/expense was; transfers carry no category.
+*what* an income/expense was; a transfer may carry one too (optional, kind
+unconstrained) so an internal move can still be budgeted against a line.
 
 ## Where `kind` fits now
 
@@ -382,3 +414,117 @@ into `assets` / `liabilities` with subtotals, where
   of scope.
 - **Payoff targets.** Purposes carry a `target_amount` for savings goals; there is
   no analogous "payoff by" target on liabilities yet.
+
+---
+
+# v4 — Budget plans
+
+Status: **implemented.** New `budgets` app (`BudgetPlan`, `BudgetItem`) exposed at
+`GET/POST/PUT/PATCH/DELETE /api/v1/budget-plans/`, plus **realisation progress**
+(plan vs actual) at `/api/v1/budget-plans/{id}/progress/` and
+`/api/v1/budget-plans/current/progress/`. A plan holds one planned amount per
+subcategory for a given month.
+
+v4 lets the user set a **monthly budget**: for the current month, a planned amount
+against each subcategory. Plans are stored and fetched from the budget-plans
+endpoint, and the progress routes join each plan to the actual transactions for
+its month so the UI can show realisation next to the plan.
+
+## The core insight
+
+A budget is planned amounts at the **same grain transactions are categorized** —
+the subcategory. Budgeting per subcategory (rather than per category) means a plan
+line joins directly to `Transaction.subcategory`, so plan-vs-actual is a plain
+group-by, and category-level planned totals roll up for free (as the spending
+report already does). A subcategory's `category.kind` says whether a line is
+planned income or expense, so no separate kind is stored on the budget.
+
+## Proposed schema
+
+```mermaid
+erDiagram
+    budget_plans ||--o{ budget_items : "has"
+    subcategories ||--o{ budget_items : "plans"
+
+    budget_plans {
+        int   id PK
+        date  month UK "first day of the month; one plan per month"
+    }
+
+    budget_items {
+        int      id PK
+        int      budget_plan_id FK
+        int      subcategory_id FK
+        numeric  amount "NUMERIC(12,2), > 0"
+    }
+```
+
+### New table: `budget_plans`
+
+- `id` PK
+- `month` — `DATE`, **unique**, normalized to the first day of the month. One plan
+  per calendar month; the day component is collapsed to the 1st in the serializer
+  so any day in the month resolves to that month's plan.
+
+### New table: `budget_items`
+
+- `id` PK
+- `budget_plan_id` FK → budget_plans, `ON DELETE CASCADE` — items are owned by the
+  plan and have no meaning without it.
+- `subcategory_id` FK → subcategories, `ON DELETE PROTECT` — a subcategory that is
+  referenced by a plan cannot be deleted out from under it.
+- `amount` — `NUMERIC(12,2)`, a **positive magnitude** (same convention as
+  `transactions.amount`; direction is implied by the subcategory's category kind).
+- Unique on `(budget_plan_id, subcategory_id)` — at most one line per subcategory
+  per plan.
+
+## Constraints
+
+DB-level `CHECK` / unique (single-table, structural):
+
+1. `budget_plans.month` unique.
+2. `budget_items(budget_plan_id, subcategory_id)` unique.
+3. `amount > 0`.
+
+Application-level (serializer):
+
+- `month` normalized to the first of the month, with the uniqueness check run on
+  the **normalized** value (not the raw day the request carried).
+- No duplicate subcategory within a single submitted plan.
+
+## API shape
+
+- **Write** (`POST` / `PUT` / `PATCH`) accepts the plan and its items in one
+  payload; items are set by subcategory id. `PUT` replaces the item set wholesale;
+  `PATCH` without `items` leaves them untouched. Both run in a transaction.
+- **Read** expands each item's subcategory (with its category, mirroring the
+  transaction read shape) and reports `planned_income` / `planned_expense` totals —
+  split by kind, since summing income and expense magnitudes together is
+  meaningless.
+- **List** supports `?month=YYYY-MM` (or a full `YYYY-MM-DD`) to fetch a given
+  month's plan.
+
+## Realisation progress (plan vs actual)
+
+`GET /api/v1/budget-plans/{id}/progress/` (and `/current/progress/` for the plan
+currently in effect — the current month, or the most recent prior month if none)
+joins the plan to the **actual transactions in its month**:
+
+- Actuals are a single `GROUP BY subcategory` aggregate over transactions whose
+  `tx_date` falls in the plan's month (uncategorised transfers drop out). Anything
+  sourced from an **off-budget** account is excluded — see
+  [off-budget purposes](#off-budget-purposes). Two queries total; no N+1.
+- Each line reports `planned`, `actual`, `remaining` (`planned − actual`) and
+  `progress` (`actual / planned`). Lines roll up to categories and to
+  income/expense totals.
+- **Unbudgeted spend is included:** a subcategory with actuals but no plan line
+  appears with `planned = 0` and `progress = null`, so the view reflects the whole
+  month, not just what was planned.
+
+## Deferred (not in v4)
+
+- **Category-level (lump-sum) budgeting.** Every line is a subcategory; budgeting a
+  whole category means adding a line per subcategory. A category-grain line is only
+  worth adding if the subcategory grain proves too fine in practice.
+- **Copy / carry-forward.** Seeding next month's plan from this month's is a UI/
+  convenience concern, not modeled here.

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.utils.dateparse import parse_date
 from drf_spectacular.types import OpenApiTypes
@@ -8,6 +8,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from transactions.aggregation import flow_predicates, off_budget_account_ids
 from transactions.models import Transaction
 from wallets.models import Account, Purpose
 
@@ -19,11 +20,6 @@ from .serializers import (
 )
 
 ZERO = Decimal("0")
-
-# Leg-shape predicates (see schema_design.md — type is derived from the legs).
-_INCOME = Q(source_account__isnull=True, destination_account__isnull=False)
-_EXPENSE = Q(source_account__isnull=False, destination_account__isnull=True)
-_TRANSFER = Q(source_account__isnull=False, destination_account__isnull=False)
 
 _DATE_PARAMS = [
     OpenApiParameter("date_from", OpenApiTypes.DATE, description="Inclusive lower bound on tx_date."),
@@ -86,13 +82,16 @@ class NetWorthView(APIView):
 
 
 class SpendingView(APIView):
-    """Expenses grouped by category (with subcategory breakdown). Transfers and
-    income are excluded — this is expense-only."""
+    """Expenses grouped by category (with subcategory breakdown). Money leaving
+    the on-budget world counts — spent externally, or set aside into an
+    off-budget account — while anything sourced from an off-budget account (a
+    fund's purpose-spend or deposit rollover) is excluded."""
 
     @extend_schema(parameters=_DATE_PARAMS, responses=SpendingReportSerializer)
     def get(self, request):
         date_from, date_to = _date_bounds(request)
-        qs = Transaction.objects.filter(_EXPENSE, subcategory__isnull=False)
+        _, expense = flow_predicates(off_budget_account_ids())
+        qs = Transaction.objects.filter(expense, subcategory__isnull=False)
         if date_from:
             qs = qs.filter(tx_date__gte=date_from)
         if date_to:
@@ -140,13 +139,15 @@ class SpendingView(APIView):
 
 
 class CashflowView(APIView):
-    """Monthly income, expense, and net. Transfers are excluded (internal moves
-    that net to zero)."""
+    """Monthly income, expense, and net. Internal transfers net to zero and are
+    excluded; a contribution into an off-budget account counts as expense, while
+    movements sourced from one do not (already accounted for)."""
 
     @extend_schema(parameters=_DATE_PARAMS, responses=CashflowReportSerializer)
     def get(self, request):
         date_from, date_to = _date_bounds(request)
-        qs = Transaction.objects.exclude(_TRANSFER)
+        income_q, expense_q = flow_predicates(off_budget_account_ids())
+        qs = Transaction.objects.filter(income_q | expense_q)
         if date_from:
             qs = qs.filter(tx_date__gte=date_from)
         if date_to:
@@ -155,7 +156,10 @@ class CashflowView(APIView):
         rows = (
             qs.annotate(month=TruncMonth("tx_date"))
             .values("month")
-            .annotate(income=Sum("amount", filter=_INCOME), expense=Sum("amount", filter=_EXPENSE))
+            .annotate(
+                income=Sum("amount", filter=income_q),
+                expense=Sum("amount", filter=expense_q),
+            )
             .order_by("month")
         )
 

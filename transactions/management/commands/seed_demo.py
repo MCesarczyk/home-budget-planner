@@ -17,6 +17,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
 
+from budgets.models import BudgetItem, BudgetPlan
 from transactions.models import Category, Subcategory, Transaction
 from wallets.models import Account
 
@@ -64,6 +65,39 @@ INTEREST = [
     ("2023-12-01", "Main Checking", "Mortgage Interest", "940.00"),
     ("2023-09-15", "Main Checking", "Credit Card Interest", "42.00"),
 ]
+
+
+# --- v4 sample budget plans -----------------------------------------------------
+# Monthly budgets for the last two months of the sample transaction range
+# (2023-07..2023-12), so a plan sits alongside real actuals. Each line is a
+# positive amount against a subcategory (referenced by name); income vs expense is
+# read from the subcategory's category kind. month -> [(subcategory_name, amount)].
+BUDGET_PLANS = {
+    "2023-11-01": [
+        ("Primary Job", "5200.00"),
+        ("Freelance Gig", "800.00"),
+        ("Rent", "1500.00"),
+        ("Electricity", "180.00"),
+        ("Water", "60.00"),
+        ("Supermarket", "600.00"),
+        ("Fuel", "200.00"),
+        ("Streaming Service", "45.00"),
+        ("Mobile Plan", "50.00"),
+        ("Gym Membership", "40.00"),
+        ("Apparel", "150.00"),
+    ],
+    "2023-12-01": [
+        ("Primary Job", "5200.00"),
+        ("Bonus", "3000.00"),
+        ("Rent", "1500.00"),
+        ("Electricity", "220.00"),
+        ("Supermarket", "750.00"),
+        ("Gifts", "500.00"),
+        ("Fuel", "200.00"),
+        ("Apparel", "250.00"),
+        ("Streaming Service", "45.00"),
+    ],
+}
 
 
 def _sql(name):
@@ -149,6 +183,18 @@ class Command(BaseCommand):
                 tx_date=tx_date,
                 amount=Decimal(amount),
             )
+
+        # 7. sample monthly budget plans (v4). Subcategory names are unique across
+        #    categories in the sample data, so a name lookup resolves each line.
+        subcategories = {s.name: s for s in Subcategory.objects.all()}
+        for month, lines in BUDGET_PLANS.items():
+            plan, _ = BudgetPlan.objects.get_or_create(month=month)
+            for subcategory_name, amount in lines:
+                BudgetItem.objects.get_or_create(
+                    budget_plan=plan,
+                    subcategory=subcategories[subcategory_name],
+                    defaults={"amount": Decimal(amount)},
+                )
 
     @staticmethod
     def _exec_script(cursor, name):

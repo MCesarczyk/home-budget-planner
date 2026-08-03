@@ -12,9 +12,13 @@ import {
 	yearRange
 } from '$lib/transactions/helpers';
 import * as api from '$lib/transactions/api';
+import { resetNav, setUrl } from './nav.mock.svelte';
 import Page from './+page.svelte';
 
-vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+// Filters live in the URL, so mock $app/state + $app/navigation with a shared
+// reactive URL (see nav.mock) that `goto` rewrites.
+vi.mock('$app/state', async () => ({ page: (await import('./nav.mock.svelte')).page }));
+vi.mock('$app/navigation', async () => ({ goto: (await import('./nav.mock.svelte')).goto }));
 vi.mock('$app/paths', () => ({ resolve: (p: string) => p }));
 vi.mock('$lib/transactions/api', () => ({
 	fetchTransactions: vi.fn(),
@@ -82,6 +86,7 @@ function envelope(results: Transaction[], count = results.length): Paginated<Tra
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	resetNav();
 	fetchCategories.mockResolvedValue(categories);
 	fetchSubcategories.mockResolvedValue(subcategories);
 	fetchSpending.mockResolvedValue(emptyReport);
@@ -254,6 +259,33 @@ describe('transactions page', () => {
 		);
 
 		expect(fetchSpending.mock.calls.length).toBe(before);
+	});
+
+	it('reads its filters from the URL on load (deep link)', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		setUrl('/transactions?month=2023-12&category=1');
+		render(Page);
+
+		await vi.waitFor(() =>
+			expect(fetchTransactions).toHaveBeenLastCalledWith(
+				{ ...monthRange('2023-12'), category: 1 },
+				1
+			)
+		);
+		await expect
+			.element(page.getByRole('combobox', { name: 'Category', exact: true }))
+			.toHaveValue('1');
+	});
+
+	it('writes the chosen filter into the URL', async () => {
+		fetchTransactions.mockResolvedValue(envelope([]));
+		render(Page);
+
+		await expect.element(page.getByText('No transactions this month.')).toBeInTheDocument();
+		await page.getByRole('combobox', { name: 'Category', exact: true }).selectOptions('1');
+
+		const { page: navPage } = await import('./nav.mock.svelte');
+		await vi.waitFor(() => expect(navPage.url.searchParams.get('category')).toBe('1'));
 	});
 
 	it('opens the new-transaction modal from the toolbar button', async () => {
