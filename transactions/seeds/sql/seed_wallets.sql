@@ -2,11 +2,11 @@
 -- Explicit IDs so FKs are deterministic and reproducible.
 -- See docs/schema_design.md § "v2 — Accounts & transfers".
 
-INSERT INTO wallets_purpose (id, name, description, target_amount) VALUES
-    (1, 'Emergency Fund',    '3-6 months of expenses set aside for emergencies', 20000.00),
-    (2, 'Future Home Repair', 'Roof, boiler and general home upkeep',            15000.00),
-    (3, 'Retirement',         'Long-term retirement savings',                    NULL),
-    (4, 'Vacation',           'Annual holiday budget',                            5000.00);
+INSERT INTO wallets_purpose (id, name, description, target_amount, is_off_budget) VALUES
+    (1, 'Emergency Fund',    '3-6 months of expenses set aside for emergencies', 20000.00, FALSE),
+    (2, 'Future Home Repair', 'Roof, boiler and general home upkeep',            15000.00, TRUE),
+    (3, 'Retirement',         'Long-term retirement savings',                    NULL,     FALSE),
+    (4, 'Vacation',           'Annual holiday budget',                            5000.00, FALSE);
 
 INSERT INTO wallets_account
     (id, name, type, opening_balance, purpose_id, is_active) VALUES
