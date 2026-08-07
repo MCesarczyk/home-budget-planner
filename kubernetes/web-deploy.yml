@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hbp-web
+  namespace: hbp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hbp-web
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: hbp-web
+    spec:
+      initContainers:
+      - name: hbp-web-init
+        image: ghcr.io/mcesarczyk/home-budget-planner-backend:latest
+        command: ["/app/docker-entrypoint.sh"] # only seed db on init
+        env:
+        - name: POSTGRES_HOST
+          value: "hbp-db"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: ALLOWED_HOSTS
+          value: "hbp-web,localhost,127.0.0.1"
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: DB_NAME
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hbp-secret
+              key: DB_PASSWORD
+        - name: DJANGO_SUPERUSER_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: ADMIN_USER
+        - name: DJANGO_SUPERUSER_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: ADMIN_EMAIL
+        - name: DJANGO_SUPERUSER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hbp-secret
+              key: ADMIN_PASSWORD
+      containers:
+      - name: hbp-web
+        image: ghcr.io/mcesarczyk/home-budget-planner-backend:latest
+        # start container without seeding
+        command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+        ports:
+        - containerPort: 8000
+        env:
+        - name: SEED_DEMO_DATA
+          value: "False"
+        - name: POSTGRES_HOST
+          value: "hbp-db"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: ALLOWED_HOSTS
+          value: "hbp-web,localhost,127.0.0.1"
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: DB_NAME
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: DB_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hbp-secret
+              key: DB_PASSWORD
+        - name: DJANGO_SUPERUSER_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: ADMIN_USER
+        - name: DJANGO_SUPERUSER_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: hbp-configmap
+              key: ADMIN_EMAIL
+        - name: DJANGO_SUPERUSER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hbp-secret
+              key: ADMIN_PASSWORD
