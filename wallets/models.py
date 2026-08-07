@@ -13,7 +13,7 @@ class Purpose(models.Model):
     target_amount = models.DecimalField(
         max_digits=14, decimal_places=2, null=True, blank=True
     )
-    is_off_budget = models.BooleanField(default=False)
+    is_off_budget = models.BooleanField(default=False, db_default=False)
 
     def __str__(self):
         return self.name
