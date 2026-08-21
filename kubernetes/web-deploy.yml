@@ -1,28 +1,24 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: hbp-web
+  name: hbp-web-migrate
   namespace: hbp
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: hbp-web
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 300
   template:
     metadata:
       labels:
-        app: hbp-web
+        app: hbp-web-migrate
     spec:
-      initContainers:
-      - name: hbp-web-init
-        image: ghcr.io/mcesarczyk/home-budget-planner-backend:latest
-        command: ["/app/docker-entrypoint.sh"] # only seed db on init
+      restartPolicy: OnFailure
+      containers:
+      - name: hbp-web-migrate
+        image: ghcr.io/mcesarczyk/home-budget-planner-backend:latest # for dev purpose only
+        command: ["/app/docker-entrypoint.sh"] # migrate + seed db, then exit
         env:
+        - name: SEED_DEMO_DATA
+          value: "True"
         - name: POSTGRES_HOST
           value: "hbp-db"
         - name: POSTGRES_PORT
@@ -59,10 +55,31 @@ spec:
             secretKeyRef:
               name: hbp-secret
               key: ADMIN_PASSWORD
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hbp-web
+  namespace: hbp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hbp-web
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: hbp-web
+    spec:
       containers:
       - name: hbp-web
-        image: ghcr.io/mcesarczyk/home-budget-planner-backend:latest
-        # start container without seeding
+        image: ghcr.io/mcesarczyk/home-budget-planner-backend:latest # for dev purpose only
+        # start container without migrating/seeding — the hbp-web-migrate Job does that
         command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
         ports:
         - containerPort: 8000
