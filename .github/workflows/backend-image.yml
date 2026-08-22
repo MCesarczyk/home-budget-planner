@@ -55,6 +55,9 @@ jobs:
       - name: Install Poetry
         run: pipx install poetry==2.3.4
 
+      - name: Check lockfile is in sync
+        run: poetry check --lock
+
       - name: Install dependencies
         run: poetry install --no-root
 

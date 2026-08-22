@@ -81,6 +81,32 @@ pnpm exec vitest --run
 
 The backend suite uses SQLite and needs no running database.
 
+From the repo root, 
+```bash
+pnpm run verify
+```
+runs all six in one go — the same set the `pre-push` hook enforces.
+
+## Git hooks
+
+Husky installs the hooks on `pnpm install` at the repo root, so do that once after
+cloning (alongside `poetry install` and `pnpm install` in `frontend/`):
+
+```bash
+pnpm install
+```
+
+- **`pre-commit`** — `lint-staged` auto-fixes only the staged files: `ruff check
+  --fix` and `ruff format` for `*.py`, `prettier --write` and `eslint --fix` for
+  `frontend/**`. Fixes are re-staged; anything unfixable aborts the commit.
+- **`pre-push`** — the full gate: backend lint, migration check and tests, then
+  frontend lint, type-check and tests. Roughly 40s.
+
+`ruff format` is deliberately not a repo-wide CI gate yet, so formatting converges
+file by file as the pre-commit hook touches them.
+
+To bypass in an emergency: `HUSKY=0 git push`.
+
 ## Domain model
 
 Four apps hold the data; [`docs/schema_design.md`](docs/schema_design.md) has the
@@ -158,7 +184,7 @@ docs/              api.md (integration guide), schema_design.md (data model)
 Two workflows in `.github/workflows/`, each triggered only by changes to its own
 side of the repo:
 
-- **`backend-image.yml`** — lint, migration check, and tests; then build and push.
+- **`backend-image.yml`** — lockfile check, lint, migration check, and tests; then build and push.
 - **`frontend-image.yml`** — lint, type-check, and tests; then build and push.
 
 No image is built unless its tests pass. Images go to GHCR as

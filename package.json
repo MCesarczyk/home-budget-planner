@@ -1,0 +1,31 @@
+{
+	"name": "hbp-tooling",
+	"private": true,
+	"description": "Repo-level dev tooling: git hooks that gate commits and pushes",
+	"scripts": {
+		"prepare": "husky",
+		"lint": "pnpm run lint:backend && pnpm run lint:frontend",
+		"lint:backend": "poetry run ruff check .",
+		"lint:frontend": "pnpm --dir frontend run lint",
+		"check:backend": "poetry run python manage.py makemigrations --check --dry-run",
+		"check:frontend": "pnpm --dir frontend run check",
+		"test": "pnpm run test:backend && pnpm run test:frontend",
+		"test:backend": "poetry run python manage.py test",
+		"test:frontend": "pnpm --dir frontend run test",
+		"verify": "pnpm run lint:backend && pnpm run check:backend && pnpm run test:backend && pnpm run lint:frontend && pnpm run check:frontend && pnpm run test:frontend"
+	},
+	"devDependencies": {
+		"husky": "^9.1.7",
+		"lint-staged": "^16.2.7"
+	},
+	"lint-staged": {
+		"*.py": [
+			"poetry run ruff check --fix --force-exclude",
+			"poetry run ruff format --force-exclude"
+		],
+		"frontend/**/*.{js,ts,svelte,json,css,md,html}": [
+			"pnpm --dir frontend exec prettier --write --ignore-unknown",
+			"pnpm --dir frontend exec eslint --fix --no-warn-ignored"
+		]
+	}
+}

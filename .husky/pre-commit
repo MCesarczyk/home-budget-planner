@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# Lint + auto-fix only the staged files, then re-stage them.
+pnpm exec lint-staged

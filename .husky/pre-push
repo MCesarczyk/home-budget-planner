@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+
+# Full quality gate before anything leaves the machine.
+# Mirrors .github/workflows/{backend,frontend}-image.yml test jobs.
+# Escape hatch (use sparingly): HUSKY=0 git push
+set -e
+
+step() { printf '\n\033[1;34m▶ %s\033[0m\n' "$1"; }
+
+step 'backend: ruff'
+poetry run ruff check .
+
+step 'backend: missing migrations'
+poetry run python manage.py makemigrations --check --dry-run
+
+step 'backend: tests'
+poetry run python manage.py test
+
+step 'frontend: lint'
+pnpm --dir frontend run lint
+
+step 'frontend: type-check'
+pnpm --dir frontend run check
+
+step 'frontend: tests'
+pnpm --dir frontend run test
+
+printf '\n\033[1;32m✔ all checks passed\033[0m\n'

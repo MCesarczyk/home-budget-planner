@@ -92,3 +92,9 @@ local_settings.py
 db.sqlite3
 dump/
 staticfiles/
+
+### Node ###
+node_modules/
+
+### Husky ###
+.husky/_/
