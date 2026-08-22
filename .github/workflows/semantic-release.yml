@@ -1,0 +1,118 @@
+name: Semantic release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: check secrets
+    runs-on: ubuntu-latest
+    outputs:
+      has_gh_secrets: ${{ steps.secrets.outputs.has_gh_secrets }}
+    steps:
+      - name: Check GitHub secrets
+        id: secrets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$GITHUB_TOKEN" ]; then
+            echo 'has_gh_secrets=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'has_gh_secrets=' >> "$GITHUB_OUTPUT"
+          fi
+
+  check_version_number:
+    name: check version number
+    needs: [check]
+    runs-on: ubuntu-latest
+    if: |
+      needs.check.outputs.has_gh_secrets
+      && github.actor != 'nektos/act'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new_release_published: ${{ steps.semantic_dry.outputs.new_release_published }}
+      new_release_version: ${{ steps.semantic_dry.outputs.new_release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Get semantic release version
+        uses: cycjimmy/semantic-release-action@v3
+        id: semantic_dry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          dry_run: true
+          branches: |
+            [
+              "+([0-9])?(.{+([0-9]),x}).x",
+              "main"
+            ]
+          extends: |
+            conventional-changelog-conventionalcommits@6.1.0
+          extra_plugins: |
+            @semantic-release/commit-analyzer@9.0.2
+            @semantic-release/release-notes-generator@10.0.3
+            @semantic-release/github@8.0.7
+            @semantic-release/changelog@6.0.2
+            @semantic-release/exec@6.0.3
+            @semantic-release/git@10.0.1
+
+  tag_version:
+    name: release
+    needs: [check, check_version_number]
+    if: |
+      needs.check.outputs.has_gh_secrets
+      && needs.check_version_number.outputs.new_release_published
+      && github.actor != 'nektos/act'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Semantic Release
+        uses: cycjimmy/semantic-release-action@v3
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          semantic_version: 19
+          branches: |
+            [
+              "+([0-9])?(.{+([0-9]),x}).x",
+              "main"
+            ]
+          extends: |
+            conventional-changelog-conventionalcommits@6.1.0
+          extra_plugins: |
+            @semantic-release/commit-analyzer@9.0.2
+            @semantic-release/release-notes-generator@10.0.3
+            @semantic-release/github@8.0.7
+            @semantic-release/changelog@6.0.2
+            @semantic-release/exec@6.0.3
+            @semantic-release/git@10.0.1
+
+      - name: Changelog version
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          echo ${{ steps.semantic.outputs.new_release_version }}
+
+    outputs:
+      new_release: ${{ steps.semantic.outputs.new_release_published }}
+      new_version: ${{ steps.semantic.outputs.new_release_version }}
