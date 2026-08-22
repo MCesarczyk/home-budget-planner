@@ -235,9 +235,9 @@
 <main class="min-h-[calc(100vh-3.5rem)] bg-slate-50 p-4 dark:bg-slate-950">
 	<div class="mx-auto max-w-6xl">
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-			<div class="flex items-center gap-3">
+			<div class="flex w-full flex-col items-center gap-3 sm:flex-row">
 				<div
-					class="inline-flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-700"
+					class="grid w-full grid-cols-3 overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-700"
 				>
 					<button
 						type="button"
@@ -317,35 +317,37 @@
 				{/if}
 			</div>
 
-			<div class="flex items-center gap-3">
-				<select
-					aria-label="Category"
-					value={categoryId}
-					onchange={onCategoryChange}
-					class="rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-				>
-					<option value="">All categories</option>
-					{#each categories as category (category.id)}
-						<option value={String(category.id)}>{category.name}</option>
-					{/each}
-				</select>
+			<div class="flex w-full flex-col items-center gap-3 sm:flex-row">
+				<div class="flex w-full gap-3">
+					<select
+						aria-label="Category"
+						value={categoryId}
+						onchange={onCategoryChange}
+						class="w-full rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+					>
+						<option value="">All categories</option>
+						{#each categories as category (category.id)}
+							<option value={String(category.id)}>{category.name}</option>
+						{/each}
+					</select>
 
-				<select
-					aria-label="Subcategory"
-					value={subcategoryId}
-					onchange={onSubcategoryChange}
-					class="rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-				>
-					<option value="">All subcategories</option>
-					{#each subcategoryOptions as subcategory (subcategory.id)}
-						<option value={String(subcategory.id)}>{subcategory.name}</option>
-					{/each}
-				</select>
+					<select
+						aria-label="Subcategory"
+						value={subcategoryId}
+						onchange={onSubcategoryChange}
+						class="w-full rounded-md border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+					>
+						<option value="">All subcategories</option>
+						{#each subcategoryOptions as subcategory (subcategory.id)}
+							<option value={String(subcategory.id)}>{subcategory.name}</option>
+						{/each}
+					</select>
+				</div>
 
 				<button
 					type="button"
 					onclick={openNew}
-					class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+					class="w-full rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
 				>
 					New transaction
 				</button>
