@@ -355,7 +355,7 @@
 		</div>
 
 		<div class="grid gap-4 lg:grid-cols-3">
-			<div class="lg:col-span-2">
+			<div class="overflow-auto lg:col-span-2">
 				<div
 					class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800"
 				>
