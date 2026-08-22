@@ -84,7 +84,9 @@ function envelope(results: Transaction[], count = results.length): Paginated<Tra
 	return { count, next: null, previous: null, results };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+	// Layout is breakpoint-driven, so pin a desktop viewport unless a test opts out.
+	await page.viewport(1024, 768);
 	vi.clearAllMocks();
 	resetNav();
 	fetchCategories.mockResolvedValue(categories);
@@ -286,6 +288,33 @@ describe('transactions page', () => {
 
 		const { page: navPage } = await import('./nav.mock.svelte');
 		await vi.waitFor(() => expect(navPage.url.searchParams.get('category')).toBe('1'));
+	});
+
+	it('renders the table on screens at or above the sm breakpoint', async () => {
+		await page.viewport(1024, 768);
+		fetchTransactions.mockResolvedValue(envelope([expense]));
+		render(Page);
+
+		await expect.element(page.getByRole('table')).toBeInTheDocument();
+	});
+
+	it('replaces the table with tiles below the sm breakpoint', async () => {
+		await page.viewport(375, 812);
+		fetchTransactions.mockResolvedValue(envelope([expense]));
+		render(Page);
+
+		await expect.element(page.getByText('Food · Groceries')).toBeInTheDocument();
+		await expect.element(page.getByRole('table')).not.toBeInTheDocument();
+	});
+
+	it('opens the edit modal from a tile below the sm breakpoint', async () => {
+		await page.viewport(375, 812);
+		fetchTransactions.mockResolvedValue(envelope([expense]));
+		render(Page);
+
+		await page.getByRole('button', { name: /Food · Groceries/ }).click();
+
+		await expect.element(page.getByRole('button', { name: 'Save' })).toBeInTheDocument();
 	});
 
 	it('opens the new-transaction modal from the toolbar button', async () => {

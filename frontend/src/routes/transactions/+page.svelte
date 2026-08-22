@@ -25,8 +25,11 @@
 	import type { Category, SpendingReport, Subcategory, Transaction } from '$lib/transactions/types';
 	import SpendingSummary from '$lib/transactions/SpendingSummary.svelte';
 	import TransactionModal from '$lib/transactions/TransactionModal.svelte';
+	import { createMediaQuery, SM_QUERY } from '$lib/responsive.svelte';
 
 	type Mode = 'all' | 'month' | 'year';
+
+	const wide = createMediaQuery(SM_QUERY);
 
 	let params = $derived(page.url.searchParams);
 	let mode = $derived<Mode>(
@@ -371,6 +374,41 @@
 									? 'No transactions this year.'
 									: 'No transactions yet.'}
 						</p>
+					{:else if !wide.matches}
+						<ul class="divide-y divide-slate-100 dark:divide-slate-800">
+							{#each transactions as tx (tx.id)}
+								<li>
+									<button
+										type="button"
+										onclick={() => openEdit(tx)}
+										class="flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50"
+									>
+										<div class="flex items-center justify-between gap-3">
+											<span
+												class="rounded-full px-2 py-0.5 text-xs font-medium {badgeClass[tx.type]}"
+											>
+												{tx.type}
+											</span>
+											<span class="font-medium whitespace-nowrap {amountClass(tx.type)}">
+												{signedAmount(tx)}
+											</span>
+										</div>
+										<span class="text-sm text-slate-700 dark:text-slate-300"
+											>{categoryLabel(tx)}</span
+										>
+										{#if tx.comment}
+											<span class="text-xs text-slate-400 dark:text-slate-500">{tx.comment}</span>
+										{/if}
+										<div
+											class="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400"
+										>
+											<span class="whitespace-nowrap">{tx.tx_date}</span>
+											<span class="truncate">{accountsLabel(tx)}</span>
+										</div>
+									</button>
+								</li>
+							{/each}
+						</ul>
 					{:else}
 						<div class="max-h-[calc(100vh-13rem)] scrollbar-thin overflow-y-auto">
 							<table class="w-full text-left text-sm">
