@@ -98,14 +98,18 @@ pnpm install
 
 - **`pre-commit`** — `lint-staged` auto-fixes only the staged files: `ruff check
   --fix` and `ruff format` for `*.py`, `prettier --write` and `eslint --fix` for
-  `frontend/**`. Fixes are re-staged; anything unfixable aborts the commit.
+  `frontend/**`. Fixes are re-staged; anything unfixable aborts the commit. Then
+  `gitleaks` scans the staged diff and blocks the commit on any secret it finds —
+  the local mirror of the `detect-secrets` workflow. It uses the `gitleaks` binary
+  if you have one (`brew install gitleaks`), otherwise a pinned Docker image; with
+  neither available it warns and skips, leaving CI as the only gate.
 - **`pre-push`** — the full gate: backend lint, migration check and tests, then
   frontend lint, type-check and tests. Roughly 40s.
 
 `ruff format` is deliberately not a repo-wide CI gate yet, so formatting converges
 file by file as the pre-commit hook touches them.
 
-To bypass in an emergency: `HUSKY=0 git push`.
+To bypass in an emergency: `HUSKY=0 git push` (or `HUSKY=0 git commit`).
 
 ## Domain model
 
