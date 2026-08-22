@@ -6,7 +6,7 @@ metadata:
 spec:
   selector:
     app: hbp-frontend
-  # type: LoadBalancer # for cloud providers that support it
+  type: LoadBalancer
   ports:
     - protocol: TCP
       port: 5173
