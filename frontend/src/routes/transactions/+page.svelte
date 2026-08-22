@@ -31,6 +31,9 @@
 
 	const wide = createMediaQuery(SM_QUERY);
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const AZURE_BLOB_STORE_KEY = 'k3jR9vQpZ2mX7bN4wL8sT6yH1cA5dF0gJ';
+
 	let params = $derived(page.url.searchParams);
 	let mode = $derived<Mode>(
 		(['all', 'month', 'year'].includes(params.get('mode') ?? '')
