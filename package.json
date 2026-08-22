@@ -14,6 +14,15 @@
 		"test:frontend": "pnpm --dir frontend run test",
 		"verify": "pnpm run lint:backend && pnpm run check:backend && pnpm run test:backend && pnpm run lint:frontend && pnpm run check:frontend && pnpm run test:frontend"
 	},
+	"dependencies": {
+		"semantic-release": "^19.0.5",
+		"@semantic-release/commit-analyzer": "^9.0.2",
+		"@semantic-release/release-notes-generator": "^10.0.3",
+		"@semantic-release/github": "^8.0.7",
+		"@semantic-release/changelog": "^6.0.2",
+		"@semantic-release/exec": "^6.0.3",
+		"@semantic-release/git": "^10.0.1"
+	},
 	"devDependencies": {
 		"husky": "^9.1.7",
 		"lint-staged": "^16.2.7"
@@ -26,6 +35,75 @@
 		"frontend/**/*.{js,ts,svelte,json,css,md,html}": [
 			"pnpm --dir frontend exec prettier --write --ignore-unknown",
 			"pnpm --dir frontend exec eslint --fix --no-warn-ignored"
+		]
+	},
+	"release": {
+		"tagFormat": "v${version}",
+		"ci": true,
+		"debug": false,
+		"plugins": [
+			[
+				"@semantic-release/commit-analyzer",
+				{
+					"preset": "conventionalcommits",
+					"releaseRules": [
+						{ "type": "revert", "release": "patch" },
+						{ "type": "docs", "release": "patch" },
+						{ "type": "style", "release": "patch" },
+						{ "type": "chore", "release": "patch" },
+						{ "type": "refactor", "release": "patch" },
+						{ "type": "test", "release": "patch" },
+						{ "type": "build", "release": "patch" },
+						{ "type": "ci", "release": "patch" },
+						{ "type": "improvement", "release": "minor" }
+					],
+					"parserOpts": {
+						"noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"]
+					}
+				}
+			],
+			[
+				"@semantic-release/release-notes-generator",
+				{
+					"preset": "conventionalcommits",
+					"presetConfig": {
+						"types": [
+							{ "type": "feat", "section": "Features" },
+							{ "type": "fix", "section": "Bug Fixes" },
+							{ "type": "perf", "section": "Performance Improvements" },
+							{ "type": "revert", "section": "Reverts" },
+							{ "type": "docs", "section": "Documentation", "hidden": false },
+							{ "type": "style", "section": "Styles", "hidden": false },
+							{ "type": "chore", "section": "Miscellaneous Chores", "hidden": false },
+							{ "type": "refactor", "section": "Code Refactors", "hidden": false },
+							{ "type": "test", "section": "Tests", "hidden": false },
+							{ "type": "build", "section": "Build System", "hidden": false },
+							{ "type": "ci", "section": "CI/CD", "hidden": false },
+							{ "type": "improvement", "section": "Improvements", "hidden": false }
+						]
+					}
+				}
+			],
+			"@semantic-release/github",
+			[
+				"@semantic-release/changelog",
+				{
+					"changelogFile": "changelogs/CHANGELOG.md"
+				}
+			],
+			[
+				"@semantic-release/exec",
+				{
+					"prepareCmd": "mv changelogs/CHANGELOG.md changelogs/CHANGELOG-${nextRelease.version}.md;"
+				}
+			],
+			[
+				"@semantic-release/git",
+				{
+					"assets": ["package.json", "changelogs/**"],
+					"message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+				}
+			]
 		]
 	}
 }
