@@ -177,10 +177,13 @@
 			{/if}
 		</div>
 	</div>
-	<div class="pointer-events-none -mt-6 flex items-center gap-2">
-		<div class="h-6 flex-1 overflow-hidden bg-slate-100 opacity-20 dark:bg-slate-800">
-			<div class="h-full {barColor(kind, progress)}" style="width: {barWidth(progress)}"></div>
-		</div>
+	<div
+		class="mx-2 mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100 opacity-30 dark:bg-slate-800"
+	>
+		<div
+			class="h-full rounded-full {barColor(kind, progress)}"
+			style="width: {barWidth(progress)}"
+		></div>
 	</div>
 {/snippet}
 
@@ -288,8 +291,8 @@
 				<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
 					<div
 						class="h-full rounded-full {spent !== null && spent > 100
-							? 'bg-red-500'
-							: 'bg-indigo-500'}"
+							? 'bg-red-500 opacity-30'
+							: 'bg-indigo-500 opacity-30'}"
 						style="width: {clampPct(spent)}"
 					></div>
 				</div>
@@ -306,7 +309,7 @@
 				</p>
 				<div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
 					<div
-						class="h-full rounded-full bg-slate-400 dark:bg-slate-500"
+						class="h-full rounded-full bg-slate-400 opacity-30 dark:bg-slate-500"
 						style="width: {monthly}%"
 					></div>
 				</div>
