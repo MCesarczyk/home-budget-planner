@@ -139,7 +139,7 @@
 )}
 	{@const unbudgeted = isUnbudgeted(planned)}
 	{@const note = remainingNote(kind, planned, remaining)}
-	<div class="flex items-baseline justify-between px-2 text-sm">
+	<div class="flex flex-col items-baseline justify-between px-2 text-sm sm:flex-row">
 		<div>
 			<span
 				class={strong
@@ -159,7 +159,7 @@
 				{/if}
 			</span>
 		</div>
-		<div class="flex items-baseline gap-2">
+		<div class="flex items-baseline gap-2 self-end sm:self-auto">
 			<span
 				class="tabular-nums {unbudgeted
 					? 'font-medium text-orange-700 dark:text-orange-300'
