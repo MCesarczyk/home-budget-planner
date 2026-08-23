@@ -1,0 +1,182 @@
+---
+name: Deploy on VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: |
+          'Tag to deploy, e.g. sha-1a2b3c4 (blank = latest)'
+        required: false
+        type: string
+      backend_image:
+        description: |
+          'Full backend image ref, overrides image_tag'
+        required: false
+        type: string
+      frontend_image:
+        description: |
+          'Full frontend image ref, overrides image_tag'
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      image_tag:
+        description: |
+          'Tag to deploy, e.g. sha-1a2b3c4 (blank = latest)'
+        required: false
+        type: string
+      backend_image:
+        description: |
+          'Full backend image ref, overrides image_tag'
+        required: false
+        type: string
+      frontend_image:
+        description: |
+          'Full frontend image ref, overrides image_tag'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+env:
+  USER_PATH: "/home/deploy/home-budget-planner"
+  COMPOSE_FILE_NAME: "docker-compose.prod.yml"
+
+jobs:
+  check:
+    name: Prerequisites Check
+    runs-on: ubuntu-latest
+    outputs:
+      has_gh_secrets: ${{ steps.check-gh-key-secret.outputs.declared }}
+    steps:
+      - name: Check for GitHub Secret availability
+        id: check-gh-key-secret
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          if [[ -n "$VPS_SSH_KEY" ]] && [[ -n "$VPS_USERNAME" ]] && [[ -n "$VPS_HOST" ]]; then
+            echo "All secrets are declared."
+            echo "declared=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "At least one secret is missing: VPS_SSH_KEY, VPS_USERNAME, VPS_HOST."
+            exit 1
+          fi
+
+  prepare-environment:
+    runs-on: ubuntu-latest
+    name: Prepare environment
+    needs: [check]
+    if: needs.check.outputs.has_gh_secrets == 'true'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        ref: main
+    - name: copy compose file via ssh key
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: ${{ secrets.VPS_PORT || 22 }}
+        source: ${{ env.COMPOSE_FILE_NAME }}
+        target: ${{ env.USER_PATH }}
+        overwrite: true
+
+  deploy-docker:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [prepare-environment]
+    steps:
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Resolve image refs
+      id: images
+      env:
+        IN_TAG: ${{ inputs.image_tag }}
+        IN_BACKEND: ${{ inputs.backend_image }}
+        IN_FRONTEND: ${{ inputs.frontend_image }}
+      run: |
+        base="ghcr.io/$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+
+        # Path filters mean only the changed side is rebuilt, so image_tag may not
+        # exist for the other one. Fall back to :latest per image, not globally.
+        resolve() {
+          explicit="$1"; image="$2"
+          if [ -n "$explicit" ]; then
+            echo "$explicit"; return
+          fi
+          if [ -n "$IN_TAG" ]; then
+            if docker manifest inspect "$image:$IN_TAG" >/dev/null 2>&1; then
+              echo "$image:$IN_TAG"; return
+            fi
+            echo "::notice::$image:$IN_TAG not published, falling back to :latest" >&2
+          fi
+          echo "$image:latest"
+        }
+
+        backend=$(resolve "$IN_BACKEND" "${base}-backend")
+        frontend=$(resolve "$IN_FRONTEND" "${base}-frontend")
+        echo "backend=$backend" >> "$GITHUB_OUTPUT"
+        echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
+        {
+          echo "### Deploying"
+          echo "- backend: \`$backend\`"
+          echo "- frontend: \`$frontend\`"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Deploy on VPS
+      uses: appleboy/ssh-action@master
+      env:
+        BACKEND_IMAGE: ${{ steps.images.outputs.backend }}
+        FRONTEND_IMAGE: ${{ steps.images.outputs.frontend }}
+        COMPOSE_PROJECT: ${{ vars.COMPOSE_PROJECT_NAME }}
+        WEB_PORT: ${{ vars.WEB_PORT || '8000' }}
+        FRONTEND_PORT: ${{ vars.FRONTEND_PORT || '5173' }}
+        COMPOSE_FILE_NAME: ${{ env.COMPOSE_FILE_NAME }}
+        DEPLOY_PATH: ${{ env.USER_PATH }}
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        port: ${{ secrets.VPS_PORT || 22 }}
+        script_stop: true
+        envs: BACKEND_IMAGE,FRONTEND_IMAGE,COMPOSE_PROJECT,WEB_PORT,FRONTEND_PORT,COMPOSE_FILE_NAME,DEPLOY_PATH,GHCR_USER,GHCR_TOKEN
+        script: |
+          set -eu
+          cd "$DEPLOY_PATH"
+
+          # CI owns .env (compose interpolation). App secrets stay in .env.prod.
+          {
+            if [ -n "${COMPOSE_PROJECT:-}" ]; then
+              echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT"
+            fi
+            echo "BACKEND_IMAGE=$BACKEND_IMAGE"
+            echo "FRONTEND_IMAGE=$FRONTEND_IMAGE"
+            echo "WEB_PORT=$WEB_PORT"
+            echo "FRONTEND_PORT=$FRONTEND_PORT"
+          } > .env
+
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+          docker compose -f "$COMPOSE_FILE_NAME" pull
+          docker compose -f "$COMPOSE_FILE_NAME" up -d --remove-orphans
+          docker logout ghcr.io
+          docker compose -f "$COMPOSE_FILE_NAME" ps
+          docker image prune -f

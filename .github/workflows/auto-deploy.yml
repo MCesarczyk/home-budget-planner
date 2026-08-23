@@ -1,0 +1,67 @@
+---
+name: Auto deploy
+
+on:
+  workflow_run:
+    workflows: ["Backend image", "Frontend image"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
+jobs:
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    outputs:
+      proceed: ${{ steps.gate.outputs.proceed }}
+      image_tag: ${{ steps.gate.outputs.image_tag }}
+    steps:
+      - name: Wait for the sibling image build
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          SELF: ${{ github.event.workflow_run.name }}
+        run: |
+          set -euo pipefail
+
+          # Matches docker/metadata-action's `type=sha,format=short`.
+          echo "image_tag=sha-${HEAD_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+          runs=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$HEAD_SHA&event=push" \
+            --jq '[.workflow_runs[] | {name, status}]')
+
+          for wf in "Backend image" "Frontend image"; do
+            [ "$wf" = "$SELF" ] && continue
+            total=$(jq --arg w "$wf" '[.[] | select(.name == $w)] | length' <<<"$runs")
+            if [ "$total" -eq 0 ]; then
+              echo "$wf did not run for this commit - nothing to wait for."
+              continue
+            fi
+            pending=$(jq --arg w "$wf" \
+              '[.[] | select(.name == $w and .status != "completed")] | length' <<<"$runs")
+            if [ "$pending" -gt 0 ]; then
+              echo "$wf is still running - it will trigger the deploy when it finishes."
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy
+    needs: [gate]
+    if: needs.gate.outputs.proceed == 'true'
+    uses: ./.github/workflows/deploy-on-vps.yml
+    with:
+      image_tag: ${{ needs.gate.outputs.image_tag }}
+    secrets: inherit
