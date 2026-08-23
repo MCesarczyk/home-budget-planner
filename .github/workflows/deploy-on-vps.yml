@@ -23,7 +23,7 @@ env:
 jobs:
   check:
     name: Prerequisites Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       has_gh_secrets: ${{ steps.check-gh-key-secret.outputs.declared }}
     steps:
@@ -40,11 +40,10 @@ jobs:
           fi
 
   prepare-environment:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     name: Prepare environment
     needs: [check]
-    if: |
-      needs.check.outputs.has_gh_secrets
+    if: needs.check.outputs.has_gh_secrets == 'true'
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -67,7 +66,7 @@ jobs:
 
   deploy-docker:
     name: Deploy - ${{ inputs.docker_image_url }}
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [prepare-environment]
     steps:
     - name: Deploy on VPS
@@ -81,7 +80,7 @@ jobs:
         port: 22
         script_stop: true
         script: |
-          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u github.actor --password-stdin
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker pull ${{ inputs.docker_image_url }}
           cd ${{ env.USER_PATH }}
           export IMAGE_URL=${{ inputs.docker_image_url }}
