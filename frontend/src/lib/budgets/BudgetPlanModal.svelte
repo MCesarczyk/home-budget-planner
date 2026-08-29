@@ -52,7 +52,7 @@
 			error = 'Failed to load form options.';
 		}
 	}
-
+	// specjalna rura
 	async function handleSubmit(input: BudgetPlanInput) {
 		submitting = true;
 		error = '';
