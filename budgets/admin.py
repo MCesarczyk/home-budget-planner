@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import BudgetItem, BudgetPlan
 
 
+# super rura
 class BudgetItemInline(admin.TabularInline):
     model = BudgetItem
     extra = 0
