@@ -158,7 +158,7 @@ A savings goal an account can be earmarked toward. **Full CRUD.**
 - `is_off_budget` marks the accounts under this purpose as sitting **outside** the
   budget: money moved *into* them counts as spending (it is set aside), money moved
   or spent *out of* them does not (it was counted on the way in). Affects the
-  spending, cashflow, and budget-progress aggregations — see §4.6.
+  spending and budget-progress aggregations (not cashflow) — see §4.6.
 
 ```json
 { "id": 1, "name": "Emergency Fund", "description": "3-6 months of expenses", "target_amount": "20000.00", "is_off_budget": false }
@@ -324,8 +324,8 @@ are excluded** from spending and cashflow (they're internal moves that net to
 zero); spending is expense-only.
 
 **Off-budget accounts.** An account whose purpose has `is_off_budget: true` sits
-outside the budget, which shifts where the expense boundary falls in spending,
-cashflow, and budget progress:
+outside the budget, which shifts where the expense boundary falls in spending and
+budget progress (cashflow is unaffected — see below):
 
 | Transaction | Counts as |
 |---|---|
@@ -366,7 +366,12 @@ category, with a subcategory breakdown, over an optional inclusive date range.
 ```
 
 **`GET /api/v1/reports/cashflow/?date_from=&date_to=`** — monthly income / expense /
-net over an optional inclusive date range, plus grand totals.
+net over an optional inclusive date range, plus grand totals. Measured at the
+**net-worth** boundary: income is money entering any account from outside, expense
+is money leaving any account to the outside, and every account-to-account transfer
+(including a contribution into an off-budget fund) is ignored. Off-budget accounts'
+own external flows (deposit interest, purpose-spend) count, so `net` equals the
+change in net worth over the range.
 ```json
 {
   "date_from": null, "date_to": null,

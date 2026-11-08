@@ -11,6 +11,17 @@ def off_budget_account_ids():
     )
 
 
+def net_worth_flow_predicates():
+    """Income/expense Q filters against the net-worth boundary: money entering
+    any account from outside (income) or leaving any account to the outside
+    (expense). Every account-to-account transfer — including a contribution into
+    or spend-back out of an off-budget fund — is excluded, so
+    Σ income − Σ expense equals the change in net worth."""
+    expense = Q(source_account__isnull=False) & Q(destination_account__isnull=True)
+    income = Q(source_account__isnull=True) & Q(destination_account__isnull=False)
+    return income, expense
+
+
 def flow_predicates(off_ids):
     """Income/expense Q filters against the on-budget boundary.
 
