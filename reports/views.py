@@ -8,7 +8,11 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from transactions.aggregation import flow_predicates, off_budget_account_ids
+from transactions.aggregation import (
+    flow_predicates,
+    net_worth_flow_predicates,
+    off_budget_account_ids,
+)
 from transactions.models import Transaction
 from wallets.models import Account, Purpose
 
@@ -22,8 +26,12 @@ from .serializers import (
 ZERO = Decimal("0")
 
 _DATE_PARAMS = [
-    OpenApiParameter("date_from", OpenApiTypes.DATE, description="Inclusive lower bound on tx_date."),
-    OpenApiParameter("date_to", OpenApiTypes.DATE, description="Inclusive upper bound on tx_date."),
+    OpenApiParameter(
+        "date_from", OpenApiTypes.DATE, description="Inclusive lower bound on tx_date."
+    ),
+    OpenApiParameter(
+        "date_to", OpenApiTypes.DATE, description="Inclusive upper bound on tx_date."
+    ),
 ]
 
 
@@ -45,7 +53,9 @@ def account_balances():
         .annotate(s=Sum("amount"))
     }
     return {
-        acc.id: acc.opening_balance + incoming.get(acc.id, ZERO) - outgoing.get(acc.id, ZERO)
+        acc.id: acc.opening_balance
+        + incoming.get(acc.id, ZERO)
+        - outgoing.get(acc.id, ZERO)
         for acc in Account.objects.all()
     }
 
@@ -66,7 +76,12 @@ class NetWorthView(APIView):
         balances = account_balances()
         assets, liabilities = [], []
         for a in Account.objects.filter(is_active=True).order_by("name"):
-            row = {"id": a.id, "name": a.name, "type": a.type, "balance": balances.get(a.id, ZERO)}
+            row = {
+                "id": a.id,
+                "name": a.name,
+                "type": a.type,
+                "balance": balances.get(a.id, ZERO),
+            }
             (liabilities if a.is_liability else assets).append(row)
 
         total_assets = sum((r["balance"] for r in assets), ZERO)
@@ -123,7 +138,11 @@ class SpendingView(APIView):
                 },
             )
             cat["subcategories"].append(
-                {"id": r["subcategory__id"], "name": r["subcategory__name"], "total": r["total"]}
+                {
+                    "id": r["subcategory__id"],
+                    "name": r["subcategory__name"],
+                    "total": r["total"],
+                }
             )
             cat["total"] += r["total"]
 
@@ -139,14 +158,16 @@ class SpendingView(APIView):
 
 
 class CashflowView(APIView):
-    """Monthly income, expense, and net. Internal transfers net to zero and are
-    excluded; a contribution into an off-budget account counts as expense, while
-    movements sourced from one do not (already accounted for)."""
+    """Monthly income, expense, and net across all accounts, so net is the
+    month's change in net worth. Every account-to-account transfer is excluded —
+    including contributions into an off-budget fund — while money entering or
+    leaving any account (off-budget ones too) counts. Budget semantics
+    (off-budget boundary) live in the spending and budget-progress reports."""
 
     @extend_schema(parameters=_DATE_PARAMS, responses=CashflowReportSerializer)
     def get(self, request):
         date_from, date_to = _date_bounds(request)
-        income_q, expense_q = flow_predicates(off_budget_account_ids())
+        income_q, expense_q = net_worth_flow_predicates()
         qs = Transaction.objects.filter(income_q | expense_q)
         if date_from:
             qs = qs.filter(tx_date__gte=date_from)
@@ -205,7 +226,9 @@ class PurposesView(APIView):
                 for a in p.accounts.all()
             ]
             current = sum((a["balance"] for a in accounts), ZERO)
-            progress = round(float(current / p.target_amount), 4) if p.target_amount else None
+            progress = (
+                round(float(current / p.target_amount), 4) if p.target_amount else None
+            )
             purposes.append(
                 {
                     "id": p.id,

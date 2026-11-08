@@ -258,9 +258,17 @@ Counting a fund's purpose-spend again would double-count it, and would blow a ho
 in the month's budget for something the user deliberately saved for.
 
 The predicates live in `transactions/aggregation.py` (`off_budget_account_ids()`,
-`flow_predicates()`) and are shared by the spending, cashflow, and budget-progress
-aggregations, so the three cannot drift apart. With no off-budget purposes they
+`flow_predicates()`) and are shared by the spending and budget-progress
+aggregations, so the two cannot drift apart. With no off-budget purposes they
 reduce to the plain leg-shape predicates above — behaviour is unchanged.
+
+**Cashflow is deliberately not on this boundary.** It reports flows across the
+*net-worth* boundary (`net_worth_flow_predicates()`): income is money entering
+any account from outside, expense is money leaving any account to the outside,
+and every account-to-account transfer — including a contribution into an
+off-budget fund — is excluded. Off-budget accounts' own external flows (deposit
+interest, purpose-spend) do count. So a month's cashflow `net` equals its change
+in net worth.
 
 The flag is on the **purpose**, not the account: an earmark is what makes money
 off-budget, and several accounts under one goal (rolling deposits) then inherit it
