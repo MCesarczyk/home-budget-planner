@@ -14,8 +14,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const headers = new Headers(request.headers);
 	for (const h of HOP_BY_HOP) headers.delete(h);
 
-	headers.delete('origin');
-	headers.delete('referer');
+	// Origin/Referer must reach Django: its CSRF check validates Origin against
+	// CSRF_TRUSTED_ORIGINS, and over HTTPS it rejects unsafe requests that carry
+	// neither ("Referer checking failed - no Referer").
 
 	const method = request.method;
 	const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
